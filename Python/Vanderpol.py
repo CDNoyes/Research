@@ -1,6 +1,6 @@
 import numpy as np
-
 class Vanderpol:
+ 
     def __init__(self, mu):
         self.mu = mu
 

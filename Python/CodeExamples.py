@@ -4,8 +4,7 @@ from scipy.integrate import odeint
 from scipy import linalg
 from scipy.interpolate import interp1d
 from Vanderpol import Vanderpol
-from EntryEquations import Entry
-#import matplotlib as mpl
+#from EntryEquations import Entry
 import matplotlib.pyplot as plt
 
 #np has array, ones, zeros, eye, diag, linspace as well as trig functions
@@ -41,6 +40,7 @@ plt.legend()
 #plt.legend('Without Grad','With Grad') # Can be used just like Matlab
 
 #%% Entry Equations!
+
 entry = Entry()
 r0, theta0, phi0, v0, gamma0, psi0 = (3540.0e3, np.radians(-90.07), np.radians(-43.90),
                                       5505.0, np.radians(-14.15), np.radians(4.99))
