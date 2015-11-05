@@ -1,0 +1,11 @@
+Some conventions concerning various mathematical structures:
+
+All vectors are assumed to be column vectors. Row vectors must be explicitly labeled as such, or the transpose notation must be used. I.e. the row vector x is equal to the vector x transposed (x' in Matlab notation.)
+
+The gradient of a scalar function of a vector is a row vector, i.e. df/dx = [df/dx1, df/dx2, ..., df/dxn]
+
+By natural extension, the Jacobian matrix of a vector-valued function will have as many columns as there are values in the input x and as many rows as there are values in the output f(x).
+i.e. Jf(x) = [ df1/dx1, ..., df1/dxn
+               df2/dx1, ..., df2/dxn ]
+                
+The Hessian of a scalar function is a square, symmetric matrix where the ith row is the gradient of the ith element of the gradient. By natural extension, the Hessian of a vector-valued function is a 3-dimensional tensor where each "page" of the tensor is the standard Hessian matrix of the corresponding scalar function from the original vector function. 
