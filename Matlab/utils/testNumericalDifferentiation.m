@@ -30,9 +30,8 @@ hessianError = norm(exactHessian(testPoint)  - Hessian(testFunction,testPoint));
 clear; clc;
 testFunction = @(x) [x(2);-x(1)+0.25*(1-x(1)^2)*x(2)];
 exactJacobian = @(x) [0, 1; -1-2*0.25*x(1)*x(2)  0.25*(1-x(1)^2) ];
-% exactHessian = @(x) [0, exp(x(2)); exp(x(2)), x(1)*exp(x(2))];
 
-testPoint = [1;1];
+testPoint = [1;-2];
 x = testPoint;
 exactHessian(1:2,1:2,1) = zeros(2);
 exactHessian(1:2,1:2,2) = [-0.5*x(2),-0.5*x(1); -0.5*x(1),0];
@@ -41,4 +40,4 @@ complexError = norm(exactJacobian(testPoint) - ComplexDiff(testFunction,testPoin
 centralError = norm(exactJacobian(testPoint) - CentralDiff(testFunction,testPoint));
 forwardError = norm(exactJacobian(testPoint) - ForwardDiff(testFunction,testPoint));
 numHessian = Hessian(testFunction,testPoint);
-hessianError = norm(exactHessian(:,:,1)-numHessian(:,:,1))+norm(exactHessian(:,:,2)-numHessian(:,:,2));
+hessianError = norm([norm(exactHessian(:,:,1)-numHessian(:,:,1)),norm(exactHessian(:,:,2)-numHessian(:,:,2))]);
