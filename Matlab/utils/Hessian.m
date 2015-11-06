@@ -1,4 +1,4 @@
-function H = Hessian( fun, x, stepSize )
+function [H,h] = Hessian( fun, x, stepSize )
 %HESSIAN Numerically computes the hessian of a function.
 %   The approximation is performed by using a complex step method to
 %   estimate the gradient/jacobian and using a central difference scheme to
@@ -16,12 +16,15 @@ if isscalar(fx)
     end
 else %Vector valued function
     n = length(fx);
-    m = length(x);
-    H = nan(m,m,n);
+%     m = length(x);
+%     H = nan(m,m,n);
+    h = cell(1,n);
     for i = 1:n
-        H(:,:,i) = CentralDiff(@(X)wrapper(df,X,i),x);
+%         H(:,:,i) = CentralDiff(@(X)wrapper(df,X,i),x);
+        h{i} = CentralDiff(@(X)wrapper(df,X,i),x);
     end
-    
+    H = blkdiag(h{:}); %Convert from an array of cells to a single 2d matrix
+
 end
 end
 

@@ -8,4 +8,4 @@ By natural extension, the Jacobian matrix of a vector-valued function will have 
 i.e. Jf(x) = [ df1/dx1, ..., df1/dxn
                df2/dx1, ..., df2/dxn ]
                 
-The Hessian of a scalar function is a square, symmetric matrix where the ith row is the gradient of the ith element of the gradient. By natural extension, the Hessian of a vector-valued function is a 3-dimensional tensor where each "page" of the tensor is the standard Hessian matrix of the corresponding scalar function from the original vector function. 
+The Hessian of a scalar function is a square, symmetric matrix where the ith row is the gradient of the ith element of the gradient. By natural extension, the Hessian of a vector-valued function is a 3-dimensional tensor where each "page" of the tensor is the standard Hessian matrix of the corresponding scalar function from the original vector function. However, in Matlab we will represent Hessians by using an array of cells, where each cell will correspond to a 2-D matrix.
