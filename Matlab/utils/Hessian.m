@@ -23,7 +23,7 @@ else %Vector valued function
 %         H(:,:,i) = CentralDiff(@(X)wrapper(df,X,i),x);
         h{i} = CentralDiff(@(X)wrapper(df,X,i),x);
     end
-    H = blkdiag(h{:}); %Convert from an array of cells to a single 2d matrix
+    H = sparse(blkdiag(h{:})); %Convert from an array of cells to a single 2d matrix
 
 end
 end
