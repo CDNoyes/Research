@@ -1,10 +1,12 @@
 %REGULARIZE Computes the nearest symmetric, positive (semi)definite
-%approximation of A in the sense of the Frobenius norm. When called with
-%only one input argument A, the result X will be positive semidefinite
-%unless A was already positive definite to begin with. When called with a
-%second, positive argument EPSILON, the resulting matrix X is guaranteed to
-%be positive definite with minimum eigenvalue equal to EPSILON. The second
-%output yields the distance between A and X in the sense of Frobenius.
+%approximation of A in the sense of the Frobenius norm.
+%   REGULARIZE(A,EPSILON) finds a regularized version of the matrix A. When
+%   called with only one input argument A, the result X will be positive
+%   semidefinite unless A was already positive definite to begin with. When
+%   called with a second, positive argument EPSILON, the resulting matrix X
+%   is guaranteed to be positive definite with minimum eigenvalue equal to
+%   EPSILON. The second output yields the distance between A and X in the
+%   sense of Frobenius.
 
 function [X,deltaA,X_inverse] = Regularize(A,epsilon)
 
