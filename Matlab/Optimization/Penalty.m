@@ -25,6 +25,7 @@ if isempty(c)
     iterMax = 1;
 else
     c0 = norm(min(0,c(x0)).^2);
+    iterMax = 10;
 end
 if ~c0
     c0 = 1;
@@ -36,12 +37,12 @@ end
 sigma = f0/c0;
 S.initial = sigma;
 x = x0;
-xold = 1e6;
 tol = 1e-6;
+xold = x0+10*tol;
 funcCount = 0;
 iter = 0;
 
-while abs(x-xold) > tol && iter < iterMax
+while norm(x-xold) > tol && iter < iterMax
     phi = @(x) f(x) + sum(sigma*min(0,c(x)).^2);
     xold = x;
     [x,fval,~,output] = fminsearch(phi,xold);

@@ -14,10 +14,10 @@ while abs(improvement) > tol && i < imax
 
 fval = f(x);
 g = ComplexDiff(f,x);
-H = Hessian(f,x);
+H = Regularize(Hessian(f,x),0.1);
 % D = eye(length(x0)); %Scaling matrix, for problems with parameters of different scale
 opt = optimoptions('quadprog','Algorithm','interior-point-convex','Display','off'); %If H is pos def, else maybe use trust region reflective?
-opt = optimoptions('quadprog','Algorithm','trust-region-reflective','Display','off');
+% opt = optimoptions('quadprog','Algorithm','trust-region-reflective','Display','off');
 p = quadprog(H,g,[],[],[],[],-r*ones(size(x)),r*ones(size(x)),[],opt); %Using a square trust region
 fstar = f(x+p);
 improvement = fstar-fval;
