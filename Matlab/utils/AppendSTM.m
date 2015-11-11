@@ -9,8 +9,18 @@ function [fAugmented,xAugmented] = AppendSTM(f,x0,order,jac,hess)
 
 %Order 1 or 2, the order of the state transition matrix stuff to include
 nInputs = nargin(f);
-
-
+switch nInputs
+    case 1 % f(t) = f(x) = f(u)
+        
+    case 2 % f(t,x)
+        
+    case 3 % f(t,x,u)
+        
+    case 4 % f(t,x,u,p)
+        
+    otherwise
+        error('Incorrect function input.')
+end
 xAugmented = [x0(:);reshape(eye(n),[],1)];
 
 
