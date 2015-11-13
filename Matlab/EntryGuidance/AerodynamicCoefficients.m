@@ -13,13 +13,13 @@ pD2 = -2904;
 pD3 =  678.6;
 pD4 = -44.33;
 pD5 =  1.373;
-pD = [pD0 pD1 pD2 pD3 pD4 pD5]';
+pD = [pD0 pD1 pD2 pD3 pD4 pD5].';
 qD0 =  1.505E4;
 qD1 =  1687;
 qD2 = -2651;
 qD3 =  544.1;
 qD4 = -34.11;
-qD = [qD0 qD1 qD2 qD3 qD4]';
+qD = [qD0 qD1 qD2 qD3 qD4].';
 
 % Lift Coefficient parameters
 RL = 4;
@@ -29,12 +29,12 @@ pL1 = -3654;
 pL2 =  485.6;
 pL3 = -14.61;
 pL4 =  0.4192;
-pL = [pL0 pL1 pL2 pL3 pL4]';
+pL = [pL0 pL1 pL2 pL3 pL4].';
 qL0 =  2.53E4;
 qL1 = -7846;
 qL2 =  1086;
 qL3 = -28.35;
-qL = [qL0 qL1 qL2 qL3]';
+qL = [qL0 qL1 qL2 qL3].';
 
 
 % CD
