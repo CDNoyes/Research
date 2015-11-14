@@ -1,3 +1,9 @@
+%BANKANGLEPROFILE Creates the parameterized profile used in the high
+%elevation planner.
+%   BANKANGLEPROFILE(T,T1,T2,T3,SIGMA_MIN,SIGMA_MAX) returns the bank angle
+%   at time(s) T based on the 3 switching times T1,T2,T3 and the bounds
+%   defined by SIGMA_MIN and SIGMA_MAX given in radians.
+
 function Sigma = BankAngleProfile(T,t1,t2,t3,sigma_min, sigma_max)
 
 Sigma = nan(1,length(T));
