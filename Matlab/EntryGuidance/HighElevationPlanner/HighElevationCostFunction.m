@@ -7,7 +7,7 @@ if J > 1e3
 end
 
 if any(p<50) || any(p>220)
-    J = 1e7;
+    J = 1e5*sum(abs(p-Saturate(p,50,220)));
     [t,x(1:6)] = deal(0);
     return
 end
