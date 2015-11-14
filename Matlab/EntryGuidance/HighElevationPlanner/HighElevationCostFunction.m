@@ -1,18 +1,21 @@
 function [J,t,x] = HighElevationCostFunction(p)
 
+%Drive the optimization away from negative switching times or unordered
+%times
 J = (checkFeasibility(p));
 if J > 1e3
     [t,x(1:6)] = deal(0);
     return
 end
 
+%Optimal control results show that the switching times are never outside
+%[50,220] so we use this info to aid convergence
 if any(p<50) || any(p>220)
     J = 1e5*sum(abs(p-Saturate(p,50,220)));
     [t,x(1:6)] = deal(0);
     return
 end
-    
-
+  
 t1 = p(1);
 t2 = p(2);
 t3 = p(3);
@@ -23,7 +26,7 @@ x0 = [3540e3; -90.07*dtr; -43.90*dtr; 5505; -14.15*dtr; 4.99*dtr];
 DR = 780;
 CR = 0;
 
-tf = 350;
+tf = 350; %Just needs to be long enough
 
 r_eq = 3397e3;      % equatorial radius, m
 
@@ -52,7 +55,6 @@ gamma = x(end,5);
 %Distance metric using range:
 [dr,cr] = Range(x0(2),x0(3),x0(6),theta,phi);
 d = norm([dr-DR,cr-CR]);
-% d = abs(dr-DR);
 J = (-h*k_h + k_gamma*gamma^2 + k_d*d);
 
 end
@@ -60,20 +62,8 @@ end
 function cost = checkFeasibility(t)
 %Avoid computing the actual cost if the chosen times are infeasible. The
 %cost will be 0 if the three switching times are feasible.
-% boundViolation = (abs(t-Saturate(t,50,250)));
-% if any(boundViolation)
-%     cost = 1e9*sum(boundViolation);
-% else
-    cost = 0;
-% end
-    sig = (-diff(t));
-%     for i = 1:2
-%         if sig(i) > 0 && sig(i) < .001
-%             sig(i) = 0;
-%         end
-%     end
-        
-    cost = cost + 1e6*(sum(sig+abs(sig))+sum(-t+abs(t)));
+    sig = (-diff(t));       
+    cost = 1e6*(sum(sig+abs(sig))+sum(-t+abs(t)));
     if cost
         cost = max(cost,1e7);
     end
