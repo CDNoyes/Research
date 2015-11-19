@@ -1,9 +1,12 @@
 %ENTRYDYNAMICS Computes the state derivatives of an entry vehicle.
-%   ENTRYDYNAMICS(X,SIGMA, SCALEFACTOR)
+%   ENTRYDYNAMICS(X,SIGMA, G, L, D) calculates the dynamics of an unpowered
+%   vehicle based on current state X, current bank angle SIGMA, and the
+%   accelerations of gravity, lift, and drag (G,L,D respectively). It does
+%   not account for Coriolis accelerations. Since this function is not
+%   directly usable by ode45, Coriolis terms can be accounted for
+%   separately.
 
 function dX = EntryDynamics(x,sigma,g,L,D)
-
-% omega_p = 7.095e-5; % angular rate of planet rotation, rad/s
 
 %State Variables:
 % x = [ r theta phi V gamma psi ]
@@ -18,9 +21,8 @@ V = x(4);       %velocity, m/s
 r_dot = V*sin(gamma);
 V_dot = -D-g*sin(gamma);
 theta_dot = V/r*cos(gamma)*cos(psi)/cos(phi);
-gamma_dot = (L*cos(sigma) - (g-V^2/r)*cos(gamma))/V;% + 2*omega_p*cos(psi)*cos(phi);
+gamma_dot = (L*cos(sigma) - (g-V^2/r)*cos(gamma))/V;
 phi_dot = V/r*cos(gamma)*sin(psi);
-psi_dot = 1/(V*cos(gamma))*(L*sin(sigma)-V^2/r*cos(gamma)^2*cos(psi)*tan(phi));% + 2*omega_p*(tan(gamma)*sin(psi)*cos(phi)-sin(phi));
-
+psi_dot = 1/(V*cos(gamma))*(L*sin(sigma)-V^2/r*cos(gamma)^2*cos(psi)*tan(phi));
 dX = [r_dot; theta_dot; phi_dot;  V_dot; gamma_dot; psi_dot ];
 end
