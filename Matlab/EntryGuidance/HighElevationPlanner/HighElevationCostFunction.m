@@ -1,3 +1,9 @@
+% HIGHELEVATIONCOSTFUNCTION Objective function used in optimization to
+% compute entry trajectories with high elevations.
+%   HIGHELEVATIONCOSTFUNCTION(P,PLANETMODEL,VEHICLEMODEL) computes the cost
+%   of a trajectory corresponding to a bank angle profile parametrized by
+%   the three switching times in P.
+
 function [J,t,x] = HighElevationCostFunction(p,planetModel,vehicleModel)
 
 %Drive the optimization away from negative switching times or unordered
@@ -10,11 +16,11 @@ end
 
 %Optimal control results show that the switching times are never outside
 %[50,220] so we use this info to reduce the search space
-if any(p<50) || any(p>220)
-    J = 1e5*sum(abs(p-Saturate(p,50,220)));
-    [t,x(1:6)] = deal(0);
-    return
-end
+% if any(p<50) || any(p>220)
+%     J = 1e5*sum(abs(p-Saturate(p,50,220)));
+%     [t,x(1:6)] = deal(0);
+%     return
+% end
   
 t1 = p(1);
 t2 = p(2);

@@ -5,6 +5,9 @@ r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
 
 % Altitude vs Velocity
+figure
+ParachuteDeploymentConstraints(true);
+hold on
 plot(x(:,4),hkm)
 xlabel('Velocity (m/s)')
 ylabel('Altitude (km)')
