@@ -38,7 +38,7 @@ fun = @(t) BankAngleProfile(t,t1,t2,t3,sigma_min,sigma_max);
 opt = odeset('RelTol',1e-8,'AbsTol',1e-8);
 [t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),x0,DR),[0 tf], x0,opt);
 
-k_h = 0*5;
+k_h = 1e-7;
 k_gamma = 0*(0.1*dtr)^-2;
 k_d = 1;
 
@@ -64,7 +64,7 @@ function cost = checkFeasibility(t)
 %cost will be 0 if the three switching times are feasible.
     sig = (-diff(t));       
     cost = 1e6*(sum(sig+abs(sig))+sum(-t+abs(t)));
-    if cost
+    if cost %#ok<BDLGI>
         cost = max(cost,1e7);
     end
 
