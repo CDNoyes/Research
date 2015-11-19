@@ -36,3 +36,4 @@ figure
 plot(t,x(:,5)/dtr)
 xlabel('Time (s)')
 ylabel('FPA (deg)')
+disp(['Final FPA: ',num2str(x(end,5)/dtr), ' deg'])
