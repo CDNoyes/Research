@@ -5,8 +5,11 @@
 
 function mars = Mars()
 
-mars.radiusEquatorial = 3396.2e3;
-mars.radiusPolar = 3376.2e3;
-mars.atmosphere = @MarsAtmosphericDensity;
+mars.radiusEquatorial = 3396.2e3;           % meters
+mars.radiusPolar = 3376.2e3;                % meters
+mars.atmosphere = @MarsAtmosphericDensity;  % kg/m^3
+% mars.mu = 0.04283e6;                      % km^3/s^2
+mars.mu = 0.04283e15;                       % m^3/s^2
+mars.omega = 7.095e-5;                      % rad/s, angular rate of planet rotation
 
 end
