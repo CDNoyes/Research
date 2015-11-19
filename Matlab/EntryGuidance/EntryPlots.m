@@ -1,3 +1,6 @@
+%ENTRYPLOTS Plot some standard graphs useful in examining entry
+%trajectories.
+
 function EntryPlots(t,x)
 dtr = pi/180;
 planet = Mars();
