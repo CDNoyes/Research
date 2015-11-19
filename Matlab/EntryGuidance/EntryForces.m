@@ -1,16 +1,16 @@
-function [g,L,D,hs,M,a,rho] = EntryForces(x,ScaleFactor)
+function [g,L,D,hs,M,a,rho] = EntryForces(x,planetModel,vehicleModel,ScaleFactor)
 
-if nargin < 2 || isempty(ScaleFactor)
+if nargin < 4 || isempty(ScaleFactor)
     ScaleFactor.radius = 1;
     ScaleFactor.velocity = 1;
 end
 
 %Constants:
-r_eq = 3397e3;      % equatorial radius, m
+r_eq = planetModel.radiusEquatorial;      % m
 
-%Vehicle Parameters, these could be passed in instead
-S = 15.8; %reference wing area, m^2
-m = 2804; %mass, kg
+%Vehicle Parameters
+S = vehicleModel.area; %reference wing area, m^2
+m = vehicleModel.mass; %mass, kg
 
 r = x(1);       %vehicle radius, m
 V = x(4);       %velocity, m/s

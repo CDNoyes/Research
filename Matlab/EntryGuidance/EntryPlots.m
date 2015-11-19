@@ -1,6 +1,7 @@
 function EntryPlots(t,x)
 dtr = pi/180;
-r_eq = 3397e3;
+planet = Mars();
+r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
 
 % Altitude vs Velocity

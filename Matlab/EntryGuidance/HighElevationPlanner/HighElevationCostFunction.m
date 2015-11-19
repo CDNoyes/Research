@@ -1,4 +1,4 @@
-function [J,t,x] = HighElevationCostFunction(p)
+function [J,t,x] = HighElevationCostFunction(p,planetModel,vehicleModel)
 
 %Drive the optimization away from negative switching times or unordered
 %times
@@ -9,7 +9,7 @@ if J > 1e3
 end
 
 %Optimal control results show that the switching times are never outside
-%[50,220] so we use this info to aid convergence
+%[50,220] so we use this info to reduce the search space
 if any(p<50) || any(p>220)
     J = 1e5*sum(abs(p-Saturate(p,50,220)));
     [t,x(1:6)] = deal(0);
@@ -28,7 +28,7 @@ CR = 0;
 
 tf = 350; %Just needs to be long enough
 
-r_eq = 3397e3;      % equatorial radius, m
+r_eq = planetModel.radiusEquatorial;      % equatorial radius, m
 
 
 sigma_min = 18.19*dtr;
@@ -36,7 +36,7 @@ sigma_max = 87.13*dtr;
 fun = @(t) BankAngleProfile(t,t1,t2,t3,sigma_min,sigma_max);
 
 opt = odeset('RelTol',1e-8,'AbsTol',1e-8);
-[t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),x0,DR),[0 tf], x0,opt);
+[t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),planetModel,vehicleModel),[0 tf], x0,opt);
 
 k_h = 1e-7;
 k_gamma = 0*(0.1*dtr)^-2;
