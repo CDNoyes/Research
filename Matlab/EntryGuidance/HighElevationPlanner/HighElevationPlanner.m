@@ -22,6 +22,7 @@ CR = 0;
 %Compute the state trajectory
 [cost,t,x] = HighElevationCostFunction(p, mars, vm,DR,CR);
 
-EntryAnalysis(t,x)
+%Show statistics and plots
+EntryAnalysis(t,x,DR,CR)
 % EntryPlots(t,x)
 % close all
