@@ -10,3 +10,4 @@ vm = VehicleModel();
 [cost,t,x] = HighElevationCostFunction(p, mars, vm);
 
 EntryPlots(t,x)
+close all
