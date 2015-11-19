@@ -4,7 +4,7 @@
 %   of a trajectory corresponding to a bank angle profile parametrized by
 %   the three switching times in P.
 
-function [J,t,x] = HighElevationCostFunction(p,planetModel,vehicleModel)
+function [J,t,x] = HighElevationCostFunction(p,planetModel,vehicleModel,DR,CR)
 
 %Drive the optimization away from negative switching times and unordered
 %times
@@ -29,8 +29,6 @@ t3 = p(3);
 dtr = pi/180;
 
 x0 = [3540e3; -90.07*dtr; -43.90*dtr; 5505; -14.15*dtr; 4.99*dtr];
-DR = 780;
-CR = 0;
 
 tf = 350; %Just needs to be long enough
 
@@ -45,7 +43,7 @@ opt = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 %Cost function weights:
 k_h = 1e-7;
-k_gamma = 420;
+k_gamma = 0;
 k_d = 1;
 
 
