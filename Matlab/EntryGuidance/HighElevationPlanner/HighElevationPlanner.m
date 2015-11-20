@@ -38,11 +38,22 @@ lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
 lim.angleMin = sigmaMin;
-% Sigma = @(t) sin(t/10);
-[T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim);
-
+Sigma = @(t) sign(sin(t/10)')*1;
+h = fminbnd(@(h)optimizePH(h,Sigma),0,10);
+[T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,h);
+err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
+disp(num2str(norm(err)))
 figure
-plot(T,Sigma(T),'r--')
+subplot 211
+plot(T,Sigma(T)/dtr,'r--')
 hold all
-plot(T,Saturate(S(:,1),-sigmaMax,sigmaMax))
-legend('Ideal','Constrained')
+plot(T,Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr)
+plot(T,S(:,2)/dtr)
+
+legend('Commanded','Executed','Bank Rate')
+subplot 212
+plot(T,err)
+
+%% Optimize predictive horizon?
+
+ 
