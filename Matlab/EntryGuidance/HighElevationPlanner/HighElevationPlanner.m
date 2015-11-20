@@ -23,15 +23,26 @@ CR = 0;
 [cost,t,x] = HighElevationCostFunction(p, mars, vm,DR,CR);
 
 %Show statistics and plots
-EntryAnalysis(t,x,DR,CR)
+tf = EntryAnalysis(t,x,DR,CR);
 % EntryPlots(t,x)
 % close all
 
 %% Bank Angle Dynamics - Applying constraints
-
+dtr = pi/180;
 sigmaMin = 18.19*dtr;
 sigmaMax = 87.13*dtr;
 rateMax = 20*dtr;
 accMax = 5*dtr;
 Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3),sigmaMin, sigmaMax); %The ideal bank profile with no constraints
+lim.rate = rateMax;
+lim.acceleration = accMax;
+lim.angleMax = sigmaMax;
+lim.angleMin = sigmaMin;
+% Sigma = @(t) sin(t/10);
+[T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim);
 
+figure
+plot(T,Sigma(T),'r--')
+hold all
+plot(T,Saturate(S(:,1),-sigmaMax,sigmaMax))
+legend('Ideal','Constrained')
