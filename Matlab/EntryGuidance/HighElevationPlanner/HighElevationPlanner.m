@@ -26,3 +26,12 @@ CR = 0;
 EntryAnalysis(t,x,DR,CR)
 % EntryPlots(t,x)
 % close all
+
+%% Bank Angle Dynamics - Applying constraints
+
+sigmaMin = 18.19*dtr;
+sigmaMax = 87.13*dtr;
+rateMax = 20*dtr;
+accMax = 5*dtr;
+Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3),sigmaMin, sigmaMax); %The ideal bank profile with no constraints
+
