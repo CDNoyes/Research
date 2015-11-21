@@ -1,10 +1,8 @@
 %High Elevation Planner
 clear; clc; close all
 
-% p = [15;130;160]; %Works well for 780
-
 %Initial Guess
-p = [5,51,250]; % 12km
+p = [5,51,250]; % 12.5 km for dr 780
 
 %Setup the optimization tolerances
 opt = optimset('tolX',1e-3,'tolFun',1e-8);
@@ -25,24 +23,23 @@ CR = 0;
 %Show statistics and plots
 tf = EntryAnalysis(t,x,DR,CR);
 % EntryPlots(t,x)
-% close all
 
-%% Bank Angle Dynamics - Applying constraints
+%% Bank Angle Dynamics - Applying acceleration constraints
 dtr = pi/180;
 sigmaMin = 18.19*dtr;
 sigmaMax = 87.13*dtr;
 rateMax = 20*dtr;
 accMax = 5*dtr;
-Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3),sigmaMin, sigmaMax); %The ideal bank profile with no constraints
+Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3),sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
 lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
 lim.angleMin = sigmaMin;
-Sigma = @(t) sign(sin(t/10)')*1;
-h = fminbnd(@(h)optimizePH(h,Sigma),0,10);
-[T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,h);
+
+KpKdH = fminsearch(@(g)optimizeBankAngleProfile(g,Sigma),[0.5,1.4,2.5]);
+[T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,KpKdH);
 err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
-disp(num2str(norm(err)))
+disp(['Norm of error between commanded and executed bank angle: ',num2str(norm(err))])
 figure
 subplot 211
 plot(T,Sigma(T)/dtr,'r--')
@@ -53,7 +50,5 @@ plot(T,S(:,2)/dtr)
 legend('Commanded','Executed','Bank Rate')
 subplot 212
 plot(T,err)
-
-%% Optimize predictive horizon?
 
  
