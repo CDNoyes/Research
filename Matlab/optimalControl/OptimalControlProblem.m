@@ -10,31 +10,21 @@
 function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds)
 
 ocp.dynamics = ode;
-
-% if isempty(lagrange)
-%     ocp.cost.lagrange = @(x) 0;
-% else
 ocp.cost.lagrange = lagrange;
-% end
-
-% if isempty(mayer)
-%     ocp.cost.mayer = @(x) 0;
-% else
 ocp.cost.mayer = mayer;
-% end
-
 ocp.constraints = constraints; %Fine if empty, each individual method decides how to proceed.
 
-% problem.bounds.lower.control = -1;
-% problem.bounds.upper.control = 1;
-% problem.bounds.upper.initialState = [x0;30];
-% problem.bounds.lower.initialState = [x0;-30];
-% problem.bounds.upper.state = [10,10,30];
-% problem.bounds.lower.state = [-10,-10,-30];
-% problem.bounds.upper.finalState = [xf;30];
-% problem.bounds.lower.finalState = [xf;-30];
-% problem.bounds.upper.finalTime = tf;
-% problem.bounds.lower.finalTime = tf;
+%Example of the bounds structure:
+% bounds.lower.control = -1;
+% bounds.upper.control = 1;
+% bounds.upper.initialState = [x0;30];
+% bounds.lower.initialState = [x0;-30];
+% bounds.upper.state = [10,10,30];
+% bounds.lower.state = [-10,-10,-30];
+% bounds.upper.finalState = [xf;30];
+% bounds.lower.finalState = [xf;-30];
+% bounds.upper.finalTime = tf;
+% bounds.lower.finalTime = tf;
 
 % We can get a lot of information from the bounds structure
 ocp.bounds = bounds;

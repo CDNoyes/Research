@@ -5,7 +5,7 @@
 %   otherwise. This allows one to define polymorphic system dynamics - in
 %   one case the control is a function of time (as in the case of
 %   interpolating a discrete control parametrization) for use in
-%   integration; in the second case, the control is simply a value of
+%   integration; in the second case, the control is simply a value or
 %   vector of values for use in numerically determining derivatives.
 
 function u = ControlWrapper(time,control)
