@@ -34,7 +34,7 @@ f0 = f(x0);
 if ~f0
     f0 = 1;
 end
-sigma = f0/c0;
+sigma = 4*f0/c0;
 S.initial = sigma;
 x = x0;
 tol = 1e-6;
