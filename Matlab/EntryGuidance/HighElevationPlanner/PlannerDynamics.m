@@ -1,3 +1,9 @@
+%PLANNERDYNAMICS Integrable dynamics for use in the high elevation planner.
+%   PLANNERDYNAMICS(TIME,STATE,BANKANGLE,PLANETMODEL,VEHICLEMODEL) is a
+%   Matlab ode-solver compliant function that returns trivial dynamics when
+%   the parachute deployment constraints on altitude and velocity have been
+%   met and standard entry dynamics otherwise.
+
 function dX = PlannerDynamics(t,x,sigma,planetModel,vehicleModel)
 
 r_eq = planetModel.radiusEquatorial;
