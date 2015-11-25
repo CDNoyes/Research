@@ -10,7 +10,8 @@ x0 = 10*rand(n,1);
 xu = 5*ones(n,1);
 xl = -3*ones(n,1);
 
-opt = optimset('Algorithm','interior-point-convex');
+opt = optimset('Algorithm','interior-point-convex','Display','none');
+% opt = optimoptions('quadprog','Algorithm','active-set','Display','none');
 tic
 [xMatlab,fMatlab] = quadprog(H,g,[],[],[],[],xl,xu,[],opt);
 toc
