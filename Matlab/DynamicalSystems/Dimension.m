@@ -17,7 +17,7 @@ end
 function ind = Indices(dim)
 
 ind.state = 1:dim.state;
-ind.control = dim.state + 1:dim.control;
-ind.parameter = dim.state + dim.control + 1:dim.parameter;
+ind.control = dim.state + (1:dim.control);
+ind.parameter = dim.state + dim.control + (1:dim.parameter);
 ind.total = 1:dim.total;
 end
