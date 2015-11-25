@@ -9,10 +9,6 @@
 
 function [fVDP,jVDP,hVDP] = VDP()
 
-% fVDP = @(t,x,u) vdpDynamics(t,x,u,mu);
-% jVDP = @(x,u) vdpJacobian(x,u,mu);
-% hVDP = @(x,u) vdpHessian(x,u,mu);
-
 fVDP = @vdpDynamics;
 jVDP = @vdpJacobian;
 hVDP = @vdpHessian;
