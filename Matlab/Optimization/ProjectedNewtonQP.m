@@ -46,14 +46,9 @@ while iter < iterMax
     end
     dx = zeros(n,1);
     dx(f,1) = -inv(hess(f,f))*gf;
-    
-    %     xSorted = [x(f);x(c)];
-    %     gradSorted = [grad(f);grad(c)];
-    %     hessSorted = [hess(f,f), hess(f,c)
-    %                   hess(c,f), hess(c,c)];
+
     hff = hess(f,f);
     alpha = armijo(@(X) fQuad(hess,grad,X),x,dx,g,xlower,xupper);
-%     alpha = fminunc(@(alpha)lineSearch(alpha,@(X) fQuad(hess,grad,X),g,x,dx,xlower,xupper),.01*max(xupper-xlower));
     x = Saturate(x+alpha*dx,xlower,xupper);
     iter = iter+1;
 end
@@ -79,11 +74,4 @@ end
 
 function f = fQuad(H,q,x)
 f = 0.5*x'*H*x + q'*x;
-end
-
-function gamma = lineSearch(alpha,f,g,x,dx,xl,xu)
-
-    xa = Saturate(x+alpha*dx,xl,xu);
-    gamma = (f(x)-f(xa))/(g'*(x-xa)); %We want to maximize gamma so we min -gamma
-
 end
