@@ -10,8 +10,8 @@
 function [fVDP,jVDP,hVDP] = VDP(mu)
 
 fVDP = @(t,x,u) vdpDynamics(t,x,u,mu);
-jVDP = @(x) vdpJacobian(x,mu);
-hVDP = @(x) vdpHessian(x,mu);
+jVDP = @(x,u) vdpJacobian(x,u,mu);
+hVDP = @(x,u) vdpHessian(x,u,mu);
 
 end
 
@@ -22,17 +22,15 @@ dx = [ x(2)
 
 end
 
-function J = vdpJacobian(x,mu)
+function J = vdpJacobian(x,u,mu)
 
 J = [0, 1
     -1-2*mu*x(1)*x(2), mu*(1-x(1).^2)];
 
 end
 
-function H = vdpHessian(x,mu)
+function H = vdpHessian(x,u,mu)
 h{2} = [-2*mu*x(2),-2*mu*x(1); -2*mu*x(1),0];
 h{1} = [0,0; 0, 0];
-% h{2} = [0,0; -2*mu*x(1),0];
-% h{1} = [0,0; -2*mu*x(2), -2*mu*x(1)];
 H = sparse(blkdiag(h{:}));
 end

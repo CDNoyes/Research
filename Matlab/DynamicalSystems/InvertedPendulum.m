@@ -7,6 +7,6 @@ end
 function dfdx = InvertedPendulumJacobian(x,u)
 
 dfdx = [0, 1;-4*cos(x(1)) 0];
-dfdu = [0;1];
+% dfdu = [0;1];
 
 end
