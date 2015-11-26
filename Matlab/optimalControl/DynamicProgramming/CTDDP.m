@@ -14,7 +14,7 @@ m = OCP.dimension.control;
 p = OCP.dimension.adjoint;
 
 nPoints = 100;
-u = @(t) 0; %Initial control guess of all zeros. Implicitly assumes m = 1
+u = @(t) zeros(m,1); %Initial control guess of all zeros.
 x0 = OCP.state.initial;
 lambda = zeros(p,1); %Initial adjoint guess of zeros
 fixed = ~OCP.free.finalState; %Logical indices of the state vector elements that are fixed at tfinal, length p
@@ -38,7 +38,8 @@ while max(abs(something)) > tol
     Vlambda2 = zeros(p);                                        % pxp matrix
     
     %Integrate the Value functions backward
-    
+    Vf = [V;Vx(:);Vlambda(:);Vxx(:);Vxlambda(:);Vlambda2(:)];
+    [t,Vstate] = ode45(valueFunction,linspace(tf,0,nPoints),Vf,[]);
     
     
     
@@ -46,7 +47,27 @@ end
 
 end
 
-function Vdot = valueFunction(t,V,T,X)
+function Vdot = valueFunction(t,State,len)
+
+%Parse states:
+% V = State(1);
+Vx = State(1+(1:len.state));
+% Vl = State(1+len.state+(1:len.adjoint));
+Vxx = reshape(State(1+len.state+len.adjoint+(1:len.state^2)),len.state,len.state);
+% Vll = reshape(State(1+len.state+len.adjoint+len.state^2+(1:len.adjoint^2)),len.adjoint,len.adjoint);
+Vxl = reshape(State(1+len.state+len.adjoint+len.state^2+len.adjoint^2:end),len.state,len.adjoint);
+
+%The value function itself:
+dV = 0.5*l'*Huu*l - L;
+%First partial derivatives:
+dVx = -Lx - Fx*Vx + Kx'*Huu*l;
+dVl = -Kl'*Lu;
+%Second partial derivatives:
+dVxx = -Hxx + Kx'*Huu*Kx - Vxx*Fx' - Fx*Vxx;
+dVll = Kl'*Huu*Kl;
+dVxl = -Hxu*Kl - Fx*Vxl - Vxx*Fu'*Kl;
+
+Vdot = [dV;dVx;dVl;reshape(dVxx,[],1);reshape(dVll,[],1);reshape(dVxl,[],1)];
 
 end
 
