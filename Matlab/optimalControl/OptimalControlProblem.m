@@ -7,7 +7,15 @@
 %initial/final states. Any fields that are unused should be input as empty
 %brackets.
 
-function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds)
+function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds,hessians)
+
+if nargin < 6 || isempty(hessians)
+    ocp.hessians = [];
+elseif ~isstruct(hessians)
+    error('When provided, HESSIANS must be a structure with at least one of the following fields: [lagrange,mayer,dynamics]')
+else
+    ocp.hessians = hessians; %Should check for field names, add them if not there.
+end
 
 ocp.dynamics = ode;
 ocp.cost.lagrange = lagrange;
@@ -36,22 +44,24 @@ end
 
 ocp.dimension.state = length(bounds.upper.initialState);
 ocp.dimension.control = length(bounds.upper.control);
-
+ocp.dimension.total = ocp.dimension.state+ocp.dimension.control;
 %If an initial or final state of an element in the state has equal upper
 %and lower bounds, then it should included as an equality constraint.
 %Otherwise, it is included as two inequality constraints.
 ocp = findFreeParameters(ocp);
 
 % Not all formulations will use the adjoint but for those that do:
-ocp.dimension.adjoint = length(ocp.fixed.finalState);
+ocp.dimension.adjoint = ocp.dimension.state-length(~ocp.free.finalState);
 end
 
 function OCP = findFreeParameters(OCP)
 %Based on bounds, determine which initial and final conditions are free and
 %should therefore be included in the optimization vector.
-OCP.free.initialState = find(OCP.bounds.upper.initialState-OCP.bounds.lower.initialState);
+% OCP.free.initialState = find(OCP.bounds.upper.initialState-OCP.bounds.lower.initialState);
+OCP.free.initialState = (OCP.bounds.upper.initialState~=OCP.bounds.lower.initialState);
 OCP.free.initialStateBool = ~isempty(OCP.free.initialState);
-OCP.free.finalState = find(OCP.bounds.upper.finalState-OCP.bounds.lower.finalState);
+% OCP.free.finalState = find(OCP.bounds.upper.finalState-OCP.bounds.lower.finalState);
+OCP.free.finalState = (OCP.bounds.upper.finalState~=OCP.bounds.lower.finalState);
 OCP.free.finalStateBool = ~isempty(OCP.free.finalState);
 
 end
