@@ -7,10 +7,10 @@ function [fIP,jIP] = InvertedPendulum()
     g = 9.81;
 
     fIP = @(t,x,u) [x(2); (ControlWrapper(t,u) + m*g*l*sin(x(1)) - b*x(2))/I];
-    jIP = @InvertedPendulumJacobian;
+    jIP = @(x,u) InvertedPendulumJacobian(x,u,m,l,g,I,b);
 end
 
-function df = InvertedPendulumJacobian(x,u)
+function df = InvertedPendulumJacobian(x,u,m,l,g,I,b)
 
 dfdx = [0, 1; m*g*l*cos(x(1)), -b/I];
 dfdu = [0;1/I];
