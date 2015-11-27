@@ -2,11 +2,15 @@
 %matrix, whether ind is refering to the indices of the matrix or a
 %structure for the indices of state,control, and parameter.
 
-function output = Submatrix(M,dim,ind)
+function output = Submatrix(M,dim,ind,isScalar)
 if ~isstruct(ind)
     error('Ind must be a struct input, as from Dimension.m')
 end
-
+if nargin < 4 || isempty(nEquations)
+    isScalar = false;
+else
+    isScalar = true;
+end
 d = size(M);
 
 % isTensor = length(d) == 3; %We never use hessian tensors now
