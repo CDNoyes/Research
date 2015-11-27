@@ -13,6 +13,7 @@ d = size(M);
 isHessianCell = isa(M,'cell') ;%Like the second output of Hessian.m
 isHessianMatrix = d(1) ~= dim.state; %Like the first output of Hessian.m
 
+output.matrix = M;
 
 if isHessianCell
     %     output.xx
@@ -22,21 +23,27 @@ if isHessianCell
     %     output.pp;
     %     output.up;
 elseif isHessianMatrix
-    %H = sparse(blkdiag(h{:}))
     for i = dim.state:-1:1
         hxx{i} = M((i-1)*(dim.total)+ind.state,(i-1)*(dim.total)+ind.state);
+        hxu{i} = M((i-1)*(dim.total)+ind.state,(i-1)*(dim.total)+ind.control);
+        hxp{i} = M((i-1)*(dim.total)+ind.state,(i-1)*(dim.total)+ind.parameter);
+        huu{i} = M((i-1)*(dim.total)+ind.control,(i-1)*(dim.total)+ind.control);
+        hpp{i} = M((i-1)*(dim.total)+ind.parameter,(i-1)*(dim.total)+ind.parameter);
+        hup{i} = M((i-1)*(dim.total)+ind.control,(i-1)*(dim.total)+ind.parameter);
     end
     output.xx = sparse(blkdiag(hxx{:}));
-    %     output.xu
-    %     output.xp;
-    %     output.uu;
-    %     output.pp;
-    %     output.up;
+    output.xu = sparse(blkdiag(hxu{:}));
+    output.ux = output.xu';
+    output.xp = sparse(blkdiag(hxp{:}));
+    output.px = output.xp';
+    output.uu = sparse(blkdiag(huu{:}));
+    output.pp = sparse(blkdiag(hpp{:}));
+    output.up = sparse(blkdiag(hup{:}));
+    output.pu = output.up';
 else %Jacobian
     output.state = M(:,ind.state);
     output.control = M(:,ind.control);
     output.parameter = M(:,ind.parameter);
-    output.matrix = M;
 end
 
 
