@@ -17,6 +17,10 @@ s = size(M);
 %Method two: reshaping
 V = reshape(M,[],2).';
 VI = interp1(x,V,xi)';
-Mi =  reshape(VI,[s(1:2),length(xi)]);
+if ~isscalar(xi)
+    Mi =  squeeze(mat2cell(reshape(VI,[s(1:2),length(xi)]),s(1),s(2),ones(1,length(xi))));
+else
+    Mi = reshape(VI,[s(1:2),length(xi)]);
+end
 
 end
