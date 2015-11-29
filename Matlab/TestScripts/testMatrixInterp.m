@@ -1,8 +1,11 @@
 clear; clc;
+size = [2,2];
+n = 100;
+for i = 1:n
+    M{i} = (i-1)*2/n*ones(size) + .1*rand(size);
+end
 
-M{2} = 2*ones(4,1)';
-M{1} = zeros(4,1)';
-t = [0,1];
+t = linspace(0,1,n);
 ti = linspace(0,1,10000);
 
 tic
