@@ -45,8 +45,8 @@ iter = 0;
 iterMax = 40;
 constraintViolation = tol+1;
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
-% The DDP loop
 
+% The DDP loop
 while constraintViolation > tol && iter < iterMax
     
     %Integrate dynamics forward with current control
@@ -79,18 +79,28 @@ while constraintViolation > tol && iter < iterMax
     
     %Compute gains for the whole trajectory
     for i = nPoints:-1:1
-        %Compute H,L,F here
-        [H,L,F] = computePartials(ocp,x(i,:),u(:,i));
-        [l{i},Kx{i},Kl{i}] = computeGains(H,L,F,Vx,Vxx,Vxl);
+        [H,L,F] = computePartials(OCP,x(i,:)',u(:,i));
+        [l(1:m,i),Kx{i},Kl{i}] = computeGains(H,L,F,Vx{i},Vxx{i},Vxl{i});
     end
+    
     %Integrate the linearize dynamics forward using new delta-control
+    [~,deltaX] = ode45(@linearDynamics,t,zeros(n,1),opt,...
+        @(X) ComplexDiff(@(Y)OCP.dynamics(0,Y(OCP.ind.state),Y(OCP.ind.control)),X),...
+        @(T) interp1(t,x,T),...
+        @(T) interp1(t,u,T),...
+        @(T) interp1(t,l,T),...
+        @(T) MatrixInterp(t,Kx,T),...
+        @(T) MatrixInterp(t,Kl,T));
     
-    %Computer delta-control
+    %Compute delta-control
+    for i = 1:nPoints
+        du = l(:,i)+Kx{i}*deltaX(i,:)' + Kl{i}*dlambda;
+    end
     
-    %Update control and adjioint
+    %Update control and adjoint
     u = u+gamma*du;
-
     lambda = lambda + dlambda;
+    
     iter = iter+1; %Increment the counter and continue the loop!
 end
 
@@ -160,20 +170,19 @@ end
 
 function [l,Kx,Kl] = computeGains(H,L,F,Vx,Vxx,Vxl)
 Huui = inv(H.uu);
-l = -Huui*(L.u+F.u*Vx);
-Kx = -Huui*(0.5*H.ux + 0.5*H.xu' + F.u*Vxx); %This can be simplified
-Kl = -Huui*Fu*Vxl;
+l = -Huui*(L.u+Vx*F.control);
+Kx = -Huui*(0.5*H.ux + 0.5*H.xu' + F.control'*Vxx); %This can be simplified
+Kl = -Huui*F.control'*Vxl;
 
 end
 
-function [H,L,F] = computePartials(ocp)
+function [H,L,F] = computePartials(ocp,x,u)
 
-F = Submatrix(ComplexDiff(@(X)ocp.dynamics(t,X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]),ocp.dimension,ocp.ind);
-JL = ComplexDiff(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]);
-% L = Submatrix(JL,ocp.dimension,ocp.ind);
+F = Submatrix(ComplexDiff(@(X)ocp.dynamics(0,X(ocp.ind.state),X(ocp.ind.control)),[x;u]),ocp.dimension,ocp.ind);
+JL = ComplexDiff(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x;u]);
 L.x = JL(ocp.ind.state);
 L.u = JL(ocp.ind.control);
-HL = Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]); %Hessian of the lagrange cost
+HL = Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x;u]); %Hessian of the lagrange cost
 % H = Submatrix(HL); %+ order*(SOMEHESSIANCRAP); %Only 0th order for now
 H.xx = HL(ocp.ind.state,ocp.ind.state);
 H.xu = HL(ocp.ind.state,ocp.ind.control);
@@ -192,4 +201,11 @@ for i = 1:size(VState,1)
     Vll{i} = reshape(State(1+len.state+len.adjoint+len.state^2+(1:len.adjoint^2)),len.adjoint,len.adjoint);
     Vxl{i} = reshape(State(1+len.state+len.adjoint+len.state^2+len.adjoint^2+1:end),len.state,len.adjoint);
 end
+end
+
+function dx = linearDynamics(t,x,jac,state,control,l,Kx,Kl)
+J = jac([state(t)';control(t)]);
+du = l(t) + Kx(t)*x + Kl(t)*lambda;
+dx = J*[x;du]; %+HESSIAN TERM
+
 end
