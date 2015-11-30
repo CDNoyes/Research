@@ -13,6 +13,10 @@ if nargin < 2 || isempty(order)
 else
     OCP.order = order;
 end
+
+%Check gradients/jacobians/hessians, if empty compute them numerically
+
+
 n = OCP.dimension.state;
 m = OCP.dimension.control;
 p = OCP.dimension.adjoint;
@@ -42,7 +46,7 @@ end
 
 tol = 1e-4;
 iter = 0;
-iterMax = 40;
+iterMax = 15;
 constraintViolation = tol+1;
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
 
@@ -59,7 +63,7 @@ while constraintViolation > tol && iter < iterMax
     Vx = ComplexDiff(@(X)OCP.cost.mayer(t(end),X),x(end,:))...
         + lambda'*constraintGrad;                                   % Row vector of lenth n
     Vlambda = (x(end,fixed)-OCP.bounds.upper.finalState(fixed)');         % Row vector of length p
-    Vxx = Hessian(@(X)OCP.cost.mayer(t(end),X),x(end,:)');           % nxn matrix
+    Vxx = OCP.hessian.mayer(t(end),x(end,:)'); % Hessian(@(X)OCP.cost.mayer(t(end),X),x(end,:)');           % nxn matrix
     Vxlambda = constraintGrad;                                      % pxn matrix
     Vlambda2 = zeros(p);                                            % pxp matrix
     
@@ -85,6 +89,7 @@ while constraintViolation > tol && iter < iterMax
     
     %Integrate the linearize dynamics forward using new delta-control
     [~,deltaX] = ode45(@linearDynamics,t,zeros(n,1),opt,...
+        dlambda,...
         @(X) ComplexDiff(@(Y)OCP.dynamics(0,Y(OCP.ind.state),Y(OCP.ind.control)),X),...
         @(T) interp1(t,x,T),...
         @(T) interp1(t,u,T),...
@@ -102,6 +107,7 @@ while constraintViolation > tol && iter < iterMax
     lambda = lambda + dlambda;
     
     iter = iter+1; %Increment the counter and continue the loop!
+    disp(['Iteration ', num2str(iter),' complete'])
 end
 
 sol.state = x;
@@ -131,7 +137,7 @@ JL = ComplexDiff(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t
 % L = Submatrix(JL,ocp.dimension,ocp.ind);
 L.x = JL(ocp.ind.state);
 L.u = JL(ocp.ind.control);
-HL = Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]); %Hessian of the lagrange cost
+HL = ocp.hessian.lagrange(x,u); %Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]); %Hessian of the lagrange cost
 % H = Submatrix(HL); %+ ocp.order*(SOMEHESSIANCRAP); %Only 0th order for now
 H.xx = HL(ocp.ind.state,ocp.ind.state);
 H.xu = HL(ocp.ind.state,ocp.ind.control);
@@ -182,7 +188,7 @@ F = Submatrix(ComplexDiff(@(X)ocp.dynamics(0,X(ocp.ind.state),X(ocp.ind.control)
 JL = ComplexDiff(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x;u]);
 L.x = JL(ocp.ind.state);
 L.u = JL(ocp.ind.control);
-HL = Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x;u]); %Hessian of the lagrange cost
+HL = ocp.hessian.lagrange(x,u); %Hessian(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x;u]); %Hessian of the lagrange cost
 % H = Submatrix(HL); %+ order*(SOMEHESSIANCRAP); %Only 0th order for now
 H.xx = HL(ocp.ind.state,ocp.ind.state);
 H.xu = HL(ocp.ind.state,ocp.ind.control);
@@ -203,7 +209,7 @@ for i = 1:size(VState,1)
 end
 end
 
-function dx = linearDynamics(t,x,jac,state,control,l,Kx,Kl)
+function dx = linearDynamics(t,x,lambda,jac,state,control,l,Kx,Kl)
 J = jac([state(t)';control(t)]);
 du = l(t) + Kx(t)*x + Kl(t)*lambda;
 dx = J*[x;du]; %+HESSIAN TERM

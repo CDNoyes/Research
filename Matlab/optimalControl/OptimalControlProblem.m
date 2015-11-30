@@ -14,7 +14,7 @@ if nargin < 6 || isempty(hessians)
 elseif ~isstruct(hessians)
     error('When provided, HESSIANS must be a structure with at least one of the following fields: [lagrange,mayer,dynamics]')
 else
-    ocp.hessians = hessians; %Should check for field names, add them if not there.
+    ocp.hessian = hessians; %Should check for field names, add them if not there.
 end
 
 ocp.dynamics = ode;

@@ -17,31 +17,26 @@ end
 s = size(M);
 
 %The two methods are actually very competitive.
-
-%Method one: griddedInterpolant
-% if any(s(1:2)==1)
-%     Mi = reshape(interp1(x,squeeze(M),xi),[s(1:2),length(xi)]);
-% else
-%     F=griddedInterpolant({1:s(1),1:s(2),x},M);
-% end
-% if isscalar(xi)
-%     Mi= squeeze(mat2cell(F({1:s(1),1:s(2),xi}),s(1),s(2),ones(1,length(xi))));
-% else
-%     Mi = F({1:s(1),1:s(2),xi});
-% end
-
 %Method two: reshaping
 % M = squeeze(M);
 % if length(s) ~= length(size(M))
 %     M = M';
 % end
-V = reshape(M,[],2).';
-VI = interp1(x,V,xi,method)';
+
+% V = reshape(M,[],s(1)*s(2));
+% VI = interp1(x,V,xi,method);
+
+%This method works but is somewhat slow because of the loop.
+VI = zeros([s(1:2),length(xi)]);
+for i = 1:s(1)
+    VI(i,1:s(2),:) = interp1(x,squeeze(M(i,:,:)).',xi,method).';
+end
+
 if ~isscalar(xi)
-    Mi =  squeeze(mat2cell(reshape(VI,[s(1:2),length(xi)]),s(1),s(2),ones(1,length(xi))));
+%     VI = reshape(VI',[s(1:2),length(xi)]);
+    Mi =  squeeze(mat2cell(VI,s(1),s(2),ones(1,length(xi))));
 else
     Mi = reshape(VI,[s(1:2),length(xi)]);
 end
-
 
 end
