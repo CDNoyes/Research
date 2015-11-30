@@ -12,8 +12,8 @@ R = 0.1;
 lagrange = @(x,u) u.'*R*u;
 mayer = @(t,x) x.'*Qf*x;
 constraints = [];
-hess.lagrange = 2*R;
-hess.mayer = 2*Qf;
+hess.lagrange = @(x,u) [zeros(2,3);[zeros(1,2),2*R]];
+hess.mayer = @(t,x) 2*Qf;
 hess.dynamics = [];
 
 %Set the bounds
@@ -30,3 +30,5 @@ OCP.dimension.adjoint = 0; %This means we will treat the final conditions as a s
 
 %Call the solver
 sol = CTDDP(OCP,0);
+
+plot(sol.time,sol.control)
