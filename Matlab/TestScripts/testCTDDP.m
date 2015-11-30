@@ -30,5 +30,7 @@ OCP.dimension.adjoint = 0; %This means we will treat the final conditions as a s
 
 %Call the solver
 sol = CTDDP(OCP,0);
-
+figure
 plot(sol.time,sol.control)
+figure
+plot(sol.time,sol.state)

@@ -23,7 +23,7 @@ p = OCP.dimension.adjoint;
 
 [~,OCP.ind] = Dimension(n,m,0);
 
-nPoints = 100;
+nPoints = 250;
 t = linspace(0,OCP.bounds.upper.finalTime,nPoints);
 u = zeros(m,nPoints); %Initial control guess of all zeros.
 x0 = OCP.bounds.upper.initialState;
@@ -99,7 +99,7 @@ while constraintViolation > tol && iter < iterMax
     
     %Compute delta-control
     for i = 1:nPoints
-        du = l(:,i)+Kx{i}*deltaX(i,:)' + Kl{i}*dlambda;
+        du(1:m,i) = l(:,i)+Kx{i}*deltaX(i,:)' + Kl{i}*dlambda;
     end
     
     %Update control and adjoint
@@ -107,6 +107,8 @@ while constraintViolation > tol && iter < iterMax
     lambda = lambda + dlambda;
     
     iter = iter+1; %Increment the counter and continue the loop!
+    hist(iter).state = x;
+    hist(iter).control = u;
     disp(['Iteration ', num2str(iter),' complete'])
 end
 
@@ -153,7 +155,7 @@ Kl = -Huui*F.control'*Vxl;
 %The value function itself:
 dV = 0.5*l'*H.uu*l - ocp.cost.lagrange(x(t)',u(t));
 %First partial derivatives:
-dVx = -L.x - (F.state*Vx + Kx'*H.uu*l)';
+dVx = -L.x - (F.state*Vx - Kx'*H.uu*l)';
 dVl = -Kl'*L.u;
 %Second partial derivatives:
 dVxx = -H.xx + Kx'*H.uu*Kx - Vxx*F.state' - F.state*Vxx;
