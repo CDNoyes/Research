@@ -7,10 +7,12 @@
 %initial/final states. Any fields that are unused should be input as empty
 %brackets.
 
-function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds,hessians)
+function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds,jacobian,gradients,hessians)
 
-if nargin < 6 || isempty(hessians)
-    ocp.hessians = [];
+if nargin < 8 || isempty(hessians)
+    ocp.hessian.mayer = [];
+    ocp.hessian.lagrange = [];
+    ocp.hessian.dynamics = [];  
 elseif ~isstruct(hessians)
     error('When provided, HESSIANS must be a structure with at least one of the following fields: [lagrange,mayer,dynamics]')
 else
@@ -18,6 +20,7 @@ else
 end
 
 ocp.dynamics = ode;
+ocp.jacobian = jacobian;
 ocp.cost.lagrange = lagrange;
 ocp.cost.mayer = mayer;
 ocp.constraints = constraints; %Fine if empty, each individual method decides how to proceed.

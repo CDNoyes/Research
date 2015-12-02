@@ -46,7 +46,7 @@ end
 
 tol = 1e-4;
 iter = 0;
-iterMax = 15;
+iterMax = 5;
 constraintViolation = tol+1;
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
 
@@ -118,7 +118,7 @@ sol.control = u;
 sol.l = l;
 sol.Kx = Kx;
 sol.Kl = Kl;
-
+sol.history = hist;
 end
 
 function Vdot = valueFunction(t,State,ocp,x,u)

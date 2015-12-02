@@ -25,7 +25,7 @@ bounds.upper.finalState = xf;
 bounds.lower.finalState = xf;
 bounds.lower.control = -inf;
 bounds.upper.control = inf;
-OCP = OptimalControlProblem(fIP, lagrange, mayer, constraints, bounds, hess);
+OCP = OptimalControlProblem(fIP, lagrange, mayer, constraints, bounds,jIP,[], hess);
 OCP.dimension.adjoint = 0; %This means we will treat the final conditions as a soft constraint
 
 %Call the solver
