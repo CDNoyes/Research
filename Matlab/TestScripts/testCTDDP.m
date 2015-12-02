@@ -34,3 +34,6 @@ figure
 plot(sol.time,sol.control)
 figure
 plot(sol.time,sol.state)
+hold all
+plot(sol.time,pi*ones(size(sol.time)))
+legend('Position','Velocity','Target Position')

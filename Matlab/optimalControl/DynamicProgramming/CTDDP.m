@@ -23,7 +23,7 @@ p = OCP.dimension.adjoint;
 
 [~,OCP.ind] = Dimension(n,m,0);
 
-nPoints = 250;
+nPoints = 50;
 t = linspace(0,OCP.bounds.upper.finalTime,nPoints);
 u = zeros(m,nPoints); %Initial control guess of all zeros.
 x0 = OCP.bounds.upper.initialState;
@@ -44,9 +44,10 @@ else
     gamma = 1;
 end
 
+OCP.interp = 'linear';
 tol = 1e-4;
 iter = 0;
-iterMax = 5;
+iterMax = 15;
 constraintViolation = tol+1;
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
 
@@ -62,7 +63,7 @@ while constraintViolation > tol && iter < iterMax
         (x(end,fixed)-OCP.bounds.upper.finalState(fixed)')*lambda;        % Scalar
     Vx = ComplexDiff(@(X)OCP.cost.mayer(t(end),X),x(end,:))...
         + lambda'*constraintGrad;                                   % Row vector of lenth n
-    Vlambda = (x(end,fixed)-OCP.bounds.upper.finalState(fixed)');         % Row vector of length p
+    Vlambda = (x(end,fixed)-OCP.bounds.upper.finalState(fixed)');         % Column vector of length p
     Vxx = OCP.hessian.mayer(t(end),x(end,:)'); % Hessian(@(X)OCP.cost.mayer(t(end),X),x(end,:)');           % nxn matrix
     Vxlambda = constraintGrad;                                      % pxn matrix
     Vlambda2 = zeros(p);                                            % pxp matrix
@@ -169,9 +170,11 @@ end
 function constraintGrad = Psi_X(fixed,p,n)
 constraintGrad = zeros(p,n);
 j = 0;
-for i=1:p
-    j = j+1;
-    constraintGrad(j,fixed(i)) = 1;
+for i=1:n
+    if fixed(i)
+        j = j+1;
+        constraintGrad(j,i) = 1;
+    end
 end
 
 end
@@ -201,7 +204,7 @@ end
 function [V,Vx,Vl,Vxx,Vll,Vxl] = parseValueStates(VState,ocp)
 len = ocp.dimension;
 for i = 1:size(VState,1)
-    State = VState(i,:);
+    State = VState(end+1-i,:);
     V(i) = State(1);
     Vx{i} = State(1+(1:len.state));
     Vl{i} = State(1+len.state+(1:len.adjoint));
