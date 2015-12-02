@@ -2,7 +2,7 @@ function [fIP,jIP] = InvertedPendulum()
 
     m = 1; %kg
     l = 0.5; %m
-    b = 1;
+    b = .1;
     I = m*l^2;
     g = 9.81;
 
