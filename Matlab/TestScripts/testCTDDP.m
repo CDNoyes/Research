@@ -3,7 +3,7 @@
 %% Inverted pendulum problem from the CTDDP paper for comparison
 clear; clc;
 
-[fIP,jIP] = InvertedPendulum(); %Get the dynamics and jacobian
+[fIP,jIP,hIP] = InvertedPendulum(); %Get the dynamics and jacobian
 x0 = [pi,;0];
 xf = [0;0];
 %Cost functions
@@ -14,7 +14,7 @@ mayer = @(t,x) x.'*Qf*x;
 constraints = [];
 hess.lagrange = @(x,u) [zeros(2,3);[zeros(1,2),2*R]];
 hess.mayer = @(t,x) 2*Qf;
-hess.dynamics = [];
+hess.dynamics = hIP;
 
 %Set the bounds
 bounds.upper.finalTime = 0.5;
@@ -34,6 +34,4 @@ figure
 plot(sol.time,sol.control)
 figure
 plot(sol.time,sol.state)
-hold all
-plot(sol.time,pi*ones(size(sol.time)))
-legend('Position','Velocity','Target Position')
+legend('Position','Velocity')

@@ -23,7 +23,7 @@ p = OCP.dimension.adjoint;
 
 [~,OCP.ind] = Dimension(n,m,0);
 
-nPoints = 50;
+nPoints = 100;
 t = linspace(0,OCP.bounds.upper.finalTime,nPoints);
 u = zeros(m,nPoints); %Initial control guess of all zeros.
 x0 = OCP.bounds.upper.initialState;
@@ -47,7 +47,7 @@ end
 OCP.interp = 'linear';
 tol = 1e-4;
 iter = 0;
-iterMax = 15;
+iterMax = 7;
 constraintViolation = tol+1;
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
 
@@ -70,8 +70,8 @@ while constraintViolation > tol && iter < iterMax
     
     %Integrate the Value functions backward
     Vf = [V;Vx(:);Vlambda(:);Vxx(:);Vlambda2(:);Vxlambda(:)];
-    [tb,Vstate] = ode45(@valueFunction,linspace(t(end),0,nPoints),Vf,opt,OCP,@(T) interp1(t,x,T),@(T) interp1(t,u,T));
-    
+    [~,Vstate] = ode45(@valueFunction,linspace(t(end),0,nPoints),Vf,opt,OCP,@(T) interp1(t,x,T),@(T) interp1(t,u,T));
+
     %Parse Vstate
     [V,Vx,Vl,Vxx,Vll,Vxl] = parseValueStates(Vstate,OCP);
     
@@ -111,6 +111,8 @@ while constraintViolation > tol && iter < iterMax
     hist(iter).state = x;
     hist(iter).control = u;
     disp(['Iteration ', num2str(iter),' complete'])
+    plot(t,u)
+    hold all
 end
 
 sol.state = x;
@@ -135,7 +137,8 @@ Vxx = reshape(State(1+len.state+len.adjoint+(1:len.state^2)),len.state,len.state
 Vxl = reshape(State(1+len.state+len.adjoint+len.state^2+len.adjoint^2+1:end),len.state,len.adjoint);
 
 %Compute the Jacobian and Hessian terms:
-F = Submatrix(ComplexDiff(@(X)ocp.dynamics(t,X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]),ocp.dimension,ocp.ind);
+% Fold = Submatrix(ComplexDiff(@(X)ocp.dynamics(t,X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]),ocp.dimension,ocp.ind);
+F = Submatrix(ocp.jacobian(x(t)',u(t)),ocp.dimension,ocp.ind);
 JL = ComplexDiff(@(X)ocp.cost.lagrange(X(ocp.ind.state),X(ocp.ind.control)),[x(t)';u(t)]);
 % L = Submatrix(JL,ocp.dimension,ocp.ind);
 L.x = JL(ocp.ind.state);
@@ -204,6 +207,7 @@ end
 function [V,Vx,Vl,Vxx,Vll,Vxl] = parseValueStates(VState,ocp)
 len = ocp.dimension;
 for i = 1:size(VState,1)
+%     State = VState(i,:);
     State = VState(end+1-i,:);
     V(i) = State(1);
     Vx{i} = State(1+(1:len.state));
