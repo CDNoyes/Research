@@ -26,6 +26,7 @@ p = OCP.dimension.adjoint;
 nPoints = 100;
 t = linspace(0,OCP.bounds.upper.finalTime,nPoints);
 u = zeros(m,nPoints); %Initial control guess of all zeros.
+du = zeros(m,nPoints);
 x0 = OCP.bounds.upper.initialState;
 fixed = ~OCP.free.finalState; %Logical indices of the state vector elements that are fixed at tfinal, length p
 if p == 0 && any(fixed) %This means we treat constraints softly
@@ -47,9 +48,9 @@ end
 OCP.interp = 'linear';
 tol = 1e-4;
 iter = 0;
-iterMax = 7;
+iterMax = 3;
 constraintViolation = tol+1;
-opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
+opt = odeset('AbsTol',1e-4,'RelTol',1e-3);
 
 % The DDP loop
 while constraintViolation > tol && iter < iterMax
@@ -70,10 +71,11 @@ while constraintViolation > tol && iter < iterMax
     
     %Integrate the Value functions backward
     Vf = [V;Vx(:);Vlambda(:);Vxx(:);Vlambda2(:);Vxlambda(:)];
-    [~,Vstate] = ode45(@valueFunction,linspace(t(end),0,nPoints),Vf,opt,OCP,@(T) interp1(t,x,T),@(T) interp1(t,u,T));
+%     [~,Vstate] = ode45(@valueFunction,linspace(t(end),0,nPoints),Vf,opt,OCP,@(T) interp1(t,x,T),@(T) interp1(t,u,T));
+    [~,Vstate] = ode45(@valueFunction,t,Vf,opt,OCP,@(T) interp1(t,x,T),@(T) interp1(t,u,T));
 
     %Parse Vstate
-    [V,Vx,Vl,Vxx,Vll,Vxl] = parseValueStates(Vstate,OCP);
+    [V,Vx,~,Vxx,Vll,Vxl] = parseValueStates(Vstate,OCP);
     
     %Compute the delta lambda quantity
     if ~softConstraints
@@ -153,20 +155,20 @@ H.uu = HL(ocp.ind.control,ocp.ind.control);
 %Compute the Gain terms:
 Huui = inv(H.uu);
 l = -Huui*(L.u+F.control'*Vx);
-Kx = -Huui*(0.5*H.ux + 0.5*H.xu' + F.control'*Vxx); %This can be simplified
+Kx = -Huui*(0.5*H.ux + 0.5*H.xu' + F.control'*Vxx); 
 Kl = -Huui*F.control'*Vxl;
 
 %The value function itself:
-dV = 0.5*l'*H.uu*l - ocp.cost.lagrange(x(t)',u(t));
+dV = ocp.cost.lagrange(x(t)',u(t)) - 0.5*l'*H.uu*l;
 %First partial derivatives:
-dVx = -L.x - (F.state*Vx - Kx'*H.uu*l)';
-dVl = -Kl'*L.u;
+dVx = L.x + (F.state*Vx - Kx'*H.uu*l)';
+dVl = Kl'*L.u;
 %Second partial derivatives:
-dVxx = -H.xx + Kx'*H.uu*Kx - Vxx*F.state' - F.state*Vxx;
-dVll = Kl'*H.uu*Kl;
-dVxl = -H.xu*Kl - F.state*Vxl - Vxx*F.control*Kl;
+dVxx = H.xx - Kx'*H.uu*Kx + Vxx*F.state' + F.state*Vxx;
+dVll = -Kl'*H.uu*Kl;
+dVxl = H.xu*Kl + F.state*Vxl + Vxx*F.control*Kl;
 
-Vdot = [dV;dVx(:);dVl(:);reshape(dVxx,[],1);reshape(dVll,[],1);reshape(dVxl,[],1)];
+Vdot = -[dV;dVx(:);dVl(:);reshape(dVxx,[],1);reshape(dVll,[],1);reshape(dVxl,[],1)];
 
 end
 

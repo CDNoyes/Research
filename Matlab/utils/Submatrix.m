@@ -6,10 +6,8 @@ function output = Submatrix(M,dim,ind,isScalar)
 if ~isstruct(ind)
     error('Ind must be a struct input, as from Dimension.m')
 end
-if nargin < 4 || isempty(nEquations)
+if nargin < 4 || isempty(isScalar)
     isScalar = false;
-else
-    isScalar = true;
 end
 d = size(M);
 
