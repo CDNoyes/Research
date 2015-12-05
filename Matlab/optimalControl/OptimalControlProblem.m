@@ -12,11 +12,20 @@ function ocp = OptimalControlProblem(ode, lagrange, mayer, constraints, bounds,j
 if nargin < 8 || isempty(hessians)
     ocp.hessian.mayer = [];
     ocp.hessian.lagrange = [];
-    ocp.hessian.dynamics = [];  
+    ocp.hessian.dynamics = [];
 elseif ~isstruct(hessians)
     error('When provided, HESSIANS must be a structure with at least one of the following fields: [lagrange,mayer,dynamics]')
 else
     ocp.hessian = hessians; %Should check for field names, add them if not there.
+end
+
+if nargin < 7 || isempty(gradients)
+    ocp.gradient.mayer = [];
+    ocp.gradient.lagrange = [];   
+elseif ~isstruct(gradients)
+    error('When provided, GRADIENTS must be a structure with at least one of the following fields: [lagrange,mayer]')
+else
+    ocp.gradient = gradients;
 end
 
 ocp.dynamics = ode;
