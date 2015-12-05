@@ -30,13 +30,13 @@ sigmaMin = 18.19*dtr;
 sigmaMax = 87.13*dtr;
 rateMax = 20*dtr;
 accMax = 5*dtr;
-Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3),sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
+Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
 lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
 lim.angleMin = sigmaMin;
 
-KpKdH = fminsearch(@(g)optimizeBankAngleProfile(g,Sigma),[0.5,1.4,2.5]);
+KpKdH = fminsearch(@(g)optimizeBankAngleDynamics(g,Sigma,lim,tf),[0.5,1.4,2.5]);
 [T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,KpKdH);
 err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
 disp(['Norm of error between commanded and executed bank angle: ',num2str(norm(err))])

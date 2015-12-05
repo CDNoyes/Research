@@ -24,7 +24,7 @@ disp(['Final Downrange: ',num2str(DR(end)),' km'])
 disp(['Final Crossrange: ',num2str(CR(end)), ' km'])
 if nargin >= 4 && ~isempty([dr,cr])
     d = norm([dr-DR(end),cr-CR(end)]);
-    disp(['Total range error: ',num2str(d), ' km'])
+    disp(['Total range error: ',num2str(d*1000), ' m'])
 else
     d = [];
 end
