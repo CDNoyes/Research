@@ -7,11 +7,13 @@ clear; clc;
 x0 = [pi,;0];
 xf = [0;0];
 %Cost functions
-Qf = diag([100,10]);
-R = 0.1;
+Qf = diag([100,10])/1000;
+R = 0.1/1000;
 lagrange = @(x,u) u.'*R*u;
 mayer = @(t,x) x.'*Qf*x;
 constraints = [];
+grad.lagrange = @(x,u) [zeros(1,2),R*u];
+grad.mayer = @(x)(Qf*x)';
 hess.lagrange = @(x,u) [zeros(2,3);[zeros(1,2),2*R]];
 hess.mayer = @(t,x) 2*Qf;
 hess.dynamics = hIP;
@@ -25,7 +27,7 @@ bounds.upper.finalState = xf;
 bounds.lower.finalState = xf;
 bounds.lower.control = -inf;
 bounds.upper.control = inf;
-OCP = OptimalControlProblem(fIP, lagrange, mayer, constraints, bounds,jIP,[], hess);
+OCP = OptimalControlProblem(fIP, lagrange, mayer, constraints, bounds,jIP,grad, hess);
 OCP.dimension.adjoint = 0; %This means we will treat the final conditions as a soft constraint
 
 %Call the solver

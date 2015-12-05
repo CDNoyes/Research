@@ -33,6 +33,8 @@ if p == 0 && any(fixed) %This means we treat constraints softly
     p = sum(fixed);
     OCP.dimension.adjoint = p;
     softConstraints = true; 
+else
+    softConstraints = false;
 end
 lambda = zeros(p,1);
 constraintGrad = Psi_X(fixed,p,n);
@@ -50,7 +52,7 @@ tol = 1e-4;
 iter = 0;
 iterMax = 3;
 constraintViolation = tol+1;
-opt = odeset('AbsTol',1e-4,'RelTol',1e-3);
+opt = odeset('AbsTol',1e-10,'RelTol',1e-10);
 
 % The DDP loop
 while constraintViolation > tol && iter < iterMax
@@ -164,7 +166,7 @@ dV = ocp.cost.lagrange(x(t)',u(t)) - 0.5*l'*H.uu*l;
 dVx = L.x + (F.state*Vx - Kx'*H.uu*l)';
 dVl = Kl'*L.u;
 %Second partial derivatives:
-dVxx = H.xx - Kx'*H.uu*Kx + Vxx*F.state' + F.state*Vxx;
+dVxx = H.xx - Kx'*H.uu*Kx + Vxx*F.state' + F.state*Vxx; %zeros(len.state);
 dVll = -Kl'*H.uu*Kl;
 dVxl = H.xu*Kl + F.state*Vxl + Vxx*F.control*Kl;
 
