@@ -35,8 +35,8 @@ lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
 lim.angleMin = sigmaMin;
-
-KpKdH = fminsearch(@(g)optimizeBankAngleDynamics(g,Sigma,lim,tf),[0.5,1.4,2.5]);
+KpKdH = [0.5,1.4,2.5]; %Initial Guess
+KpKdH = fminsearch(@(g)optimizeBankAngleDynamics(g,Sigma,lim,tf),KpKdH);
 [T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,KpKdH);
 err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
 disp(['Norm of error between commanded and executed bank angle: ',num2str(norm(err))])

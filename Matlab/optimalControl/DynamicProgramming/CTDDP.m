@@ -170,7 +170,7 @@ dVxx = H.xx - Kx'*H.uu*Kx + Vxx*F.state' + F.state*Vxx; %zeros(len.state);
 dVll = -Kl'*H.uu*Kl;
 dVxl = H.xu*Kl + F.state*Vxl + Vxx*F.control*Kl;
 
-Vdot = -[dV;dVx(:);dVl(:);reshape(dVxx,[],1);reshape(dVll,[],1);reshape(dVxl,[],1)];
+Vdot = [dV;dVx(:);dVl(:);reshape(dVxx,[],1);reshape(dVll,[],1);reshape(dVxl,[],1)];
 
 end
 
