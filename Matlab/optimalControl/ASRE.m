@@ -27,7 +27,7 @@ end
 
 iter = 0;
 iterMax = 25;
-tol = 0.5; %Seems large
+tol = 0.01; %Seems large
 diff = tol+1;
 
 % tf = OCP.bounds.upper.finalTime;
@@ -36,7 +36,7 @@ diff = tol+1;
 % n = OCP.dimension.state;
 % m = OCP.dimension.control;
 
-nPoints = 10000;
+nPoints = 1000;
 t = linspace(0,tf,nPoints);
 
 while iter < iterMax && diff > tol
