@@ -1,9 +1,23 @@
+%ASRE Solves a nonlinear regulation/tracking problem via an Approximating
+%Sequence of Riccati Equations methodology.
+%   ASRE(X0,TF,M,A,B,C,Q,R,F)
+%   A(x) is the state-dependent coefficient matrix
+%   B(x,u) is the 
+%
+% References:
+% State Regulation:
+% Global optimal feedback control for general nonlinear systems with
+% nonquadratic performance criteria, Cimen and Banks 2004
+%
+% Tracking Control:
+% Nonlinear optimal tracking control with application to super-tankers for
+% autopilot design, Cimen and Banks, 2004
 
-
-function sol = ASRE(x0,tf,m,A,B,Q,R,F)
+function sol = ASRE(x0,tf,m,A,B,C,Q,R,F)
 
 %Handle constant matrices
 if ~isa(A,'function_handle') %This should probably never get used
+    warning('Constant A matrix implies the problem is linear and can be solved optimally by a different method')
     A = @(x) A;
 end
 if ~isa(B,'function_handle')
@@ -13,6 +27,11 @@ elseif isa(B,'function_handle') && (nargin(B) == 1)
 elseif isa(B,'function_handle') && (nargin(B) == 2)
 else
     error('Input B must be constant, function of state B(x), or state/control B(x,u)')
+end
+if isempty(C)
+    C = @(x) eye(length(x0));
+elseif ~isa(C,'function_handle')
+    C = @(x) C;
 end
 if ~isa(Q,'function_handle')
     Q = @(x) Q;
@@ -27,7 +46,7 @@ end
 
 iter = 0;
 iterMax = 25;
-tol = 0.5; %Seems large
+tol = 0.01; %Seems large
 diff = tol+1;
 
 % tf = OCP.bounds.upper.finalTime;
@@ -42,9 +61,10 @@ t = linspace(0,tf,nPoints);
 while iter < iterMax && diff > tol
     if ~iter % First iteration is LTI
         %Integrate the finite-time riccati equation backward
-        [tb,Pvec] = ode45(@Riccati,tf-t,reshape(F(x0),[],1),[],...
+        [tb,Pvec] = ode45(@Riccati,tf-t,reshape(C(x0)'*F(x0)*C(x0),[],1),[],...
             @(X) A(x0),...
             @(X,U) B(x0,0),...
+            @(X) C(x0),...
             @(X) Q(x0),...
             @(X) R(x0),...
             @(X)x0,...
@@ -63,22 +83,18 @@ while iter < iterMax && diff > tol
         
     else % Recursive LTV systems
         %Integrate the finite-time riccati equation backward
-        [tb,Pvec] = ode45(@Riccati,tf-t,reshape(F(x{iter}(end,:)),[],1),[],...
-            A,B,Q,R,@(T) interp1(t,x{iter},T),@(T) interp1(t,u{iter},T));
+        Pf = reshape(C(x{iter}(end,:))'*F(x{iter}(end,:))*C(x{iter}(end,:)),[],1);
+        [tb,Pvec] = ode45(@Riccati,tf-t,Pf,[],A,B,C,Q,R,...
+            @(T) interp1(t,x{iter},T),@(T) interp1(t,u{iter},T));
         
         %Compute the states
-                [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
-                    A,...
-                    B,...
-                    R,...
-                    @(T) interp1(tb,Pvec,T),...
-                    @(T) interp1(t,u{iter},T));
-%         x{iter+1} = ode5(@dynamics,t,x0,...
-%                         A,...
-%                         B,...
-%                         R,...
-%                         @(T) interp1(tb,Pvec,T),...
-%                         @(T) interp1(t,u{iter},T));
+        [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
+            A,...
+            B,...
+            R,...
+            @(T) interp1(tb,Pvec,T),...
+            @(T) interp1(t,u{iter},T));
+
         %Compute the controls
         u{iter+1} = computeControl(B,R,Pvec,x{iter}',u{iter});
         diff = norm(x{iter+1}-x{iter});
@@ -104,17 +120,18 @@ end
 
 end
 
-function dP = Riccati(t,P,A,B,Q,R,X,U)
+function dP = Riccati(t,P,A,B,C,Q,R,X,U)
 n = sqrt(length(P));
 p = reshape(P,n,n);
 x = X(t);
 u = U(t);
 a = A(x);
 b = B(x,u);
+c = C(x);
 q = Q(x);
 r = R(x);
 s = (b/r)*b';
-dP = reshape(-q - p*a - a'*p + p*s*p,[],1);
+dP = reshape(-c'*q*c - p*a - a'*p + p*s*p,[],1);
 
 end
 

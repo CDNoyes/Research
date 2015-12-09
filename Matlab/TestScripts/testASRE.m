@@ -11,9 +11,14 @@ B = @(x,u) [-0.215+0.28*x(1)^2+0.47*x(1)*u + 0.63*u^2
 F = .1*eye(3);
 Q = .01*eye(3);
 R = 1;
-x0 = [0.56;0;0];
-tf = 10;
-sol = ASRE(x0,tf,1,A,B,Q,R,F);
+x0 = [0.50;0;0];
+tf = 20;
+sol = ASRE(x0,tf,1,A,B,[],Q,R,F);
+
+figure
+plot(sol.time,sol.state{end})
+figure
+plot(sol.time,sol.control{end})
 
 return
 %% Inverted Pend
