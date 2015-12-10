@@ -23,7 +23,7 @@
 % Nonlinear optimal tracking control with application to super-tankers for
 % autopilot design, Cimen and Banks, 2004
 
-function sol = ASRE(x0,tf,m,A,B,C,Q,R,F,z)
+function sol = ASRE(x0,tf,A,B,C,Q,R,F,z)
 
 % tf = OCP.bounds.upper.finalTime;
 % x0 = OCP.bounds.upper.initialState;
@@ -31,7 +31,7 @@ function sol = ASRE(x0,tf,m,A,B,C,Q,R,F,z)
 % n = OCP.dimension.state;
 % m = OCP.dimension.control;
 
-nPoints = 250; % Very little impact on solution quality
+nPoints = 500; % Very little impact on solution quality
 t = linspace(0,tf,nPoints);
 tb = tf - t;
 
@@ -66,25 +66,31 @@ if ~isa(F,'function_handle')
 end
 %Determine if we're tracking or regulating
 tracking = false;
-if nargin < 10 || isempty(z)
+if nargin < 9 || isempty(z)
     % Have to check nargin but don't need to actually do anything here
 elseif ~isa(z,'function_handle')
     if any(z ~= 0)
         tracking = true;
         z = @(t) z(:);
-%         Z = z(t); %Might have to loop this if z isn't vectorized.
     end
 else
     tracking = true;  
 end
+if tracking
+    for i = 1:nPoints
+        Z(:,i) = z(t(i)); % Loop in case z isn't vectorized.
+    end
+end
 
+m = size(R(x0),1);
 iter = 0;
-iterMax = 100;
-tol = 0.001; 
+iterMax = 50;
+tol = 0.01; 
 diff = tol+1;
 
 while iter < iterMax && diff > tol
     if ~iter % First iteration is LTI
+        
         % Integrate the finite-time riccati equation backward
         [~,Pvec] = ode45(@Riccati,tb,reshape(C(x0)'*F(x0)*C(x0),[],1),[],...
             @(X) A(x0),...
@@ -112,7 +118,7 @@ while iter < iterMax && diff > tol
             s = zeros(nPoints,n);
         end      
         
-        %Compute the states
+        % Compute the states
         [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
             @(X) A(x0),...
             @(X,U) B(x0,0),...
@@ -121,17 +127,18 @@ while iter < iterMax && diff > tol
             @(T) 0,...
             @(T) interp1(tb,s,T)');
         
-        %Compute the controls
+        % Compute the controls
         u{iter+1} = computeControl(@(X,U) B(x0,0), @(X) R(x0),Pvec,...
             x{iter+1}',zeros(m,nPoints),s');
         
     else % Recursive LTV systems
+        
         %Integrate the finite-time riccati equation backward
         Pf = reshape(C(x{iter}(end,:))'*F(x{iter}(end,:))*C(x{iter}(end,:)),[],1);
         [~,Pvec] = ode45(@Riccati,tb,Pf,[],A,B,C,Q,R,...
             @(T) interp1(t,x{iter},T),@(T) interp1(t,u{iter},T));
         
-        %Compute the feedforward term if we're tracking
+        % Compute the feedforward term if we're tracking
         if tracking
             sf = C(x{iter}(end,:))'*F(x{iter}(end,:))*z(tf);
             [~,s] = ode45(@feedforward,tb,sf,[],A,B,C,Q,R,...
@@ -143,14 +150,16 @@ while iter < iterMax && diff > tol
             s = zeros(nPoints,n);
         end      
         
-        %Compute the states
+        % Integrate the states
         [~,x{iter+1}] = ode45(@dynamics,t,x0,[], A,B,R,...
             @(T) interp1(tb,Pvec,T),...
             @(T) interp1(t,u{iter},T),...
             @(T) interp1(tb,s,T)');
 
-        %Compute the controls
+        % Compute the controls
         u{iter+1} = computeControl(B,R,Pvec,x{iter}',u{iter},s');
+        
+        % Compute the convergence criteria
         diff = norm(x{iter+1}-x{iter});
     end
     
@@ -164,11 +173,17 @@ if (iter == iterMax) && diff > tol
         ' the convergence tolerance (currently set to ',num2str(tol),').\n'])
 end
 
-%Should integrate the actual nonlinear dynamics here?
+for i = nPoints:-1:1 
+    P{i} = reshape(Pvec(i,:),n,n);
+end
 
-sol.state = x;
-sol.control = u;
+sol.state = x{end};
+sol.control = u{end}; %Open loop control
+sol.P = P;
+sol.s = s';
 sol.time = t;
+sol.history.state = x;
+sol.history.control = u;
 
 end
 
