@@ -66,7 +66,7 @@ for i = 1:nPoints-1
     if tracking
         gss = Acl'\C(xc)'*Q(xc)*z(:,i);
         Kgf = C(Z(:,end))'*F(xc)*Z(:,end) - gss;
-        Kg = expm(Acl*(t(i)-tf))*Kgf;
+        Kg = expm(Acl*(tf-t(i)))*Kgf;
         g = Kg + gss;
         G{i} = g;
     else
