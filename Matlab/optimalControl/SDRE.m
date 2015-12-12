@@ -54,6 +54,7 @@ else
 end
 
 x = [x0(:),zeros(n,nPoints-1)];
+u = zeros(m,nPoints);
 for i = 1:nPoints-1
     xc = x(:,i);
     Pss = -care(-A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc)); %We want negative def. Pss
@@ -62,12 +63,17 @@ for i = 1:nPoints-1
     Kf = inv(C(Z(:,end))'*F(xc)*C(Z(:,end))-Pss);
     K = expm(Acl*(t(i)-tf))*(Kf-D)*expm(Acl'*(t(i)-tf)) + D;
     P{i} = inv(K) + Pss;
-    u = @(X) -R(X)\B(X)'*P{i}*X;
-    [~,xi] = ode45(@dynamics,[t(i),t(i+1)],xc,[],A,B,u);
+    U = @(X) -R(X)\B(X)'*P{i}*X;
+    [~,xi] = ode45(@dynamics,[t(i),t(i+1)],xc,[],A,B,U);
     x(:,i+1) = xi(end,:)';
+    if i == 1
+        u(:,i) = U(xc);
+    end
+    u(:,i+1) = U(x(:,i+1));
 end
 
 sol.state = x;
+sol.control = u;
 sol.P = P;
 sol.time = t;
 

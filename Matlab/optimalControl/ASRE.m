@@ -31,7 +31,7 @@ function sol = ASRE(x0,tf,A,B,C,Q,R,F,z)
 % n = OCP.dimension.state;
 % m = OCP.dimension.control;
 
-nPoints = 500; % Very little impact on solution quality
+nPoints = 50; % Very little impact on solution quality
 t = linspace(0,tf,nPoints);
 tb = tf - t;
 
@@ -85,7 +85,7 @@ end
 m = size(R(x0),1);
 iter = 0;
 iterMax = 50;
-tol = 0.01; 
+tol = 0.1; 
 diff = tol+1;
 
 while iter < iterMax && diff > tol
