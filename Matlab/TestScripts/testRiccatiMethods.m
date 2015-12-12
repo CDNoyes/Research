@@ -20,6 +20,7 @@ figure
 plot(sol.time,sol.state)
 figure
 plot(sol.time,sol.control)
+
 sol = SDRE(x0,tf,A,B,[],Q,R,F);
 
 figure

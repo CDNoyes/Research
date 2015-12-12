@@ -63,7 +63,16 @@ for i = 1:nPoints-1
     Kf = inv(C(Z(:,end))'*F(xc)*C(Z(:,end))-Pss);
     K = expm(Acl*(t(i)-tf))*(Kf-D)*expm(Acl'*(t(i)-tf)) + D;
     P{i} = inv(K) + Pss;
-    U = @(X) -R(X)\B(X)'*P{i}*X;
+    if tracking
+        gss = Acl'\C(xc)'*Q(xc)*z(:,i);
+        Kgf = C(Z(:,end))'*F(xc)*Z(:,end) - gss;
+        Kg = expm(Acl*(t(i)-tf))*Kgf;
+        g = Kg + gss;
+        G{i} = g;
+    else
+        g = zeros(m,1);
+    end
+    U = @(X) -R(X)\B(X)'*(P{i}*X-g);
     [~,xi] = ode45(@dynamics,[t(i),t(i+1)],xc,[],A,B,U);
     x(:,i+1) = xi(end,:)';
     if i == 1
@@ -75,6 +84,9 @@ end
 sol.state = x;
 sol.control = u;
 sol.P = P;
+if tracking
+    sol.g = G;
+end
 sol.time = t;
 
 end
