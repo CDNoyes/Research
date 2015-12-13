@@ -40,15 +40,14 @@ g = 9.81;
 [f,j] = InvertedPendulum();
 A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
 B = [0; 1/I];
-r = @(t) 0.03*sin(t)+pi;
-R = .001;
+r = @(t) 0.03*sin(t);
+R = .000001;
 C = [1,0]; %Track the position
-Q = @(x) (10+0*x(1)^2);
+Q = @(x) (100+10*x(1).^4);
 F = 0;
 tf = 10;
-x0 = [pi;0];
+x0 = [0;0];
 sol = ASRE(x0,tf,A,B,C,Q,R,F,r);
-
 
 figure
 plot(sol.time,sol.state(:,1))
@@ -58,11 +57,14 @@ legend('Trajectory','Reference')
 figure
 plot(sol.time,sol.control)
 
-% figure
-% for i = 1:length(sol.history.state)
-%     plot(sol.time,sol.history.state{i}(:,1))
-%     hold all
-% end
+sol = SDRE(x0,tf,A,B,C,Q,R,F,r);
+figure
+plot(sol.time,sol.state(:,1))
+hold on
+plot(linspace(0,tf,50),r(linspace(0,tf,50)),'ko')
+legend('Trajectory','Reference')
+figure
+plot(sol.time,sol.control)
 
 %% Inverted Pendulum Swing up
 
@@ -75,17 +77,22 @@ g = 9.81;
 [f,j] = InvertedPendulum();
 A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
 B = [0; 1/I];
-R = 3;
+R = 300;
 Q = @(x) 0*eye(2);
 F = 100*eye(2);
-tf = 1;
+tf = 3;
 x0 = [pi;0];
-% sol = ASRE(x0,tf,A,B,[],Q,R,F,[]);
-sol = SDRE(x0,tf,A,B,[],Q,R,F,[]);
+sol = ASRE(x0,tf,A,B,[],Q,R,F,[]);
+sol2 = SDRE(x0,tf,A,B,[],Q,R,F,[]);
 
 
 figure
 plot(sol.time,sol.state)
-legend('Angle','Angular Velocity')
+hold all
+plot(sol2.time,sol2.state)
+legend('Angle (ASRE)','Angular Velocity (ASRE)','Angle (SDRE)','Angular Velocity (SDRE)')
 figure
 plot(sol.time,sol.control)
+hold all
+plot(sol2.time,sol2.control)
+legend('ASRE','SDRE')

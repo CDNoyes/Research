@@ -1,9 +1,8 @@
 function sol = SDRE(x0,tf,A,B,C,Q,R,F,z)
 
-nPoints = 100;
+nPoints = 1000;
 t = linspace(0,tf,nPoints);
 n = length(x0);
-
 %Check the input matrices
 if ~isa(A,'function_handle') %This should probably never get used
     warning('Constant A matrix implies the problem is linear and can be solved optimally by a different method')
@@ -57,6 +56,7 @@ x = [x0(:),zeros(n,nPoints-1)];
 u = zeros(m,nPoints);
 for i = 1:nPoints-1
     xc = x(:,i);
+%     Pss = care(A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc));
     Pss = -care(-A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc)); %We want negative def. Pss
     Acl = A(xc)-B(xc)/R(xc)*B(xc)'*Pss;
     D = lyap(Acl,-B(xc)/R(xc)*B(xc)');
@@ -64,10 +64,10 @@ for i = 1:nPoints-1
     K = expm(Acl*(t(i)-tf))*(Kf-D)*expm(Acl'*(t(i)-tf)) + D;
     P{i} = inv(K) + Pss;
     if tracking
-        gss = Acl'\C(xc)'*Q(xc)*z(:,i);
+        gss = Acl'\C(xc)'*Q(xc)*Z(:,i);
         Kgf = C(Z(:,end))'*F(xc)*Z(:,end) - gss;
-        Kg = expm(Acl*(tf-t(i)))*Kgf;
-        g = Kg + gss;
+        Kg = expm(-Acl*(tf-t(i)))*Kgf;
+        g = Kg - gss;
         G{i} = g;
     else
         g = zeros(m,1);
@@ -81,7 +81,7 @@ for i = 1:nPoints-1
     u(:,i+1) = U(x(:,i+1));
 end
 
-sol.state = x;
+sol.state = x';
 sol.control = u;
 sol.P = P;
 if tracking
