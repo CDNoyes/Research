@@ -176,30 +176,68 @@ while iter < iterMax && diff > tol
     else % Recursive LTV systems
         
         %Integrate the finite-time riccati equation backward
-        Pf = reshape(C(x{iter}(end,:))'*F(x{iter}(end,:))*C(x{iter}(end,:)),[],1);
-        [~,Pvec] = ode45(@Riccati,tb,Pf,[],A,B,C,Q,R,...
+        if fixedFS
+            Pf = reshape(F(x{iter}(end,:)),[],1);
+            Cfun = @(X) eye(n);
+        else
+            Pf = reshape(C(x{iter}(end,:))'*F(x{iter}(end,:))*C(x{iter}(end,:)),[],1);
+            Cfun = C;
+        end
+        [~,Pvec] = ode45(@Riccati,tb,Pf,[],A,B,Cfun,Q,R,...
             @(T) interp1(t,x{iter},T,interpType),@(T) interp1(t,u{iter},T,interpType));
         
-        % Compute the feedforward term if we're tracking
-        if tracking
+        
+        if tracking % Compute the feedforward term if we're tracking
             sf = C(x{iter}(end,:))'*F(x{iter}(end,:))*z(tf);
             [~,s] = ode45(@feedforward,tb,sf,[],A,B,C,Q,R,...
                 @(T) interp1(tb,Pvec,T,interpType),...
                 @(T) interp1(t,x{iter},T,interpType),...
                 @(T) interp1(t,u{iter},T,interpType),...
                 z);
+        elseif fixedFS
+            Vf = C(x0)';
+            Gf = zeros(l);
+            [~,VG] = ode45(@fixedGains,tb,[Vf(:);Gf(:)],[],...
+                A,...
+                B,...
+                R,...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(T) interp1(t,x{iter},T,interpType),...
+                @(T) interp1(t,u{iter},T,interpType),l);
         else
             s = zeros(nPoints,n);
         end      
         
-        % Integrate the states
-        [~,x{iter+1}] = ode45(@dynamics,t,x0,[], A,B,R,...
-            @(T) interp1(tb,Pvec,T,interpType),...
-            @(T) interp1(t,u{iter},T,interpType),...
-            @(T) interp1(tb,s,T,interpType)');
-
-        % Compute the controls
-        u{iter+1} = computeControl(B,R,Pvec,x{iter}',u{iter},s');
+        if fixedFS
+            % Compute the states:
+            [~,x{iter+1}] = ode45(@fixedDynamics,t,x0,[],...
+                A,...
+                B,...
+                R,...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(T) interp1(t,u{iter},T,interpType),...
+                @(T) interp1(tb,VG(:,1:l*n),T,interpType),...
+                @(T) interp1(tb,VG(:,(l*n+1):end),T,interpType),...
+                z);
+            % Compute the controls
+            u{iter+1} = computeFixedControl(B,...
+                R,...
+                Pvec,...
+                x{iter+1}',...
+                u{iter},...
+                VG(:,1:l*n),...
+                VG(:,(l*n+1):end),...
+                z);
+        else
+            % Integrate the states
+            [~,x{iter+1}] = ode45(@dynamics,t,x0,[], A,B,R,...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(T) interp1(t,u{iter},T,interpType),...
+                @(T) interp1(tb,s,T,interpType)');
+            
+            % Compute the controls
+            u{iter+1} = computeControl(B,R,Pvec,x{iter}',u{iter},s');
+        end
         
         % Compute the convergence criteria
         diff = norm(x{iter+1}-x{iter});
@@ -217,12 +255,21 @@ end
 
 for i = nPoints:-1:1 
     P{i} = reshape(Pvec(i,:),n,n);
+    if fixedFS
+        V{i} = reshape(VG(i,1:l*n),n,l);
+        G{i} =  reshape(VG(i,(l*n+1):end),l,l);
+    end
 end
 
 sol.state = x{end};
 sol.control = u{end}; %Open loop control
 sol.P = P;
-sol.s = s';
+if tracking
+    sol.s = s';
+elseif fixedFS
+    sol.V = V;
+    sol.G = G;
+end
 sol.time = t;
 sol.history.state = x;
 sol.history.control = u;
@@ -296,7 +343,7 @@ a = A(x);
 u = U(t);
 b = B(x,u);
 r = R(x);
-if all(Gt == 0)
+if abs(det(g)) <= 1e-6
     dx = (a-b/r*b'*p)*x;
 else
     dx = a*x-b/r*b'*((p-v/g*v')*x + v/g*rT);
@@ -327,7 +374,7 @@ for i = 1:size(x,2)
     P = reshape(Pvec(end-i+1,:),n,n);
     V = reshape(Vvec(end-i+1,:),n,l);
     G = reshape(Gvec(end-i+1,:),l,l);
-    if all(Gvec(end-i+1) == 0)
+    if abs(det(G)) <= 1e-6
         U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*P*x(:,i);
     else
         U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*((P + V/G*V')*x(:,i) + V/G*r);

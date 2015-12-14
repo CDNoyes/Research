@@ -111,7 +111,14 @@ B = [0; 1/I];
 R = 1;
 Q = @(x) 0*eye(2);
 F = 0*eye(2);
-tf = 3;
+tf = 8;
 x0 = [pi;0];
-xf = [0;0];
-sol = ASRE(x0,tf,A,B,eye(2),Q,R,F,xf);
+xf = [0];
+C = [1,0];
+sol = ASRE(x0,tf,A,B,C,Q,R,F,xf);
+
+figure
+plot(sol.time,sol.state)
+
+figure
+plot(sol.time,sol.control)
