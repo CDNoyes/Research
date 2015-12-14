@@ -21,12 +21,12 @@ plot(sol.time,sol.state)
 figure
 plot(sol.time,sol.control)
 
-sol = SDRE(x0,tf,A,B,[],Q,R,F);
+sol2 = SDRE(x0,tf,A,B,[],Q,R,F);
 
 figure
-plot(sol.time,sol.state)
+plot(sol2.time,sol2.state)
 figure
-plot(sol.time,sol.control)
+plot(sol2.time,sol2.control)
 
 return
 
@@ -66,7 +66,7 @@ legend('Trajectory','Reference')
 figure
 plot(sol.time,sol.control)
 
-%% Inverted Pendulum Swing up
+%% Inverted Pendulum Swing up via Regulation
 
 clc; clear;
 m = 1; %kg
@@ -96,3 +96,22 @@ plot(sol.time,sol.control)
 hold all
 plot(sol2.time,sol2.control)
 legend('ASRE','SDRE')
+
+%% Inverted Pendulum Swing up via final constraints
+
+clc; clear;
+m = 1; %kg
+l = 0.5; %m
+b = .1;
+I = m*l^2;
+g = 9.81;
+[f,j] = InvertedPendulum();
+A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
+B = [0; 1/I];
+R = 1;
+Q = @(x) 0*eye(2);
+F = 0*eye(2);
+tf = 3;
+x0 = [pi;0];
+xf = [0;0];
+sol = ASRE(x0,tf,A,B,eye(2),Q,R,F,xf);

@@ -74,6 +74,7 @@ fixedFS = false; % Any endpoint constraints?
 if nargin < 9 || isempty(z)
     disp('Problem Type: Regulation')
 elseif ~isa(z,'function_handle')
+    z = z(:);
     fixedFS = true;
     disp('Problem Type: Regulation with state constraints at final time.')
     l = length(z);
@@ -140,9 +141,24 @@ while iter < iterMax && diff > tol
         
         if fixedFS
             % Compute the states:
-            
+            [~,x{iter+1}] = ode45(@fixedDynamics,t,x0,[],...
+                @(X) A(x0),...
+                @(X,U) B(x0,0),...
+                @(X) R(x0),...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(T) zeros(m,1),...
+                @(T) interp1(tb,VG(:,1:l*n),T,interpType),...
+                @(T) interp1(tb,VG(:,(l*n+1):end),T,interpType),...
+                z);
             % Compute the controls
-            computeFixedControl(B,R,Pvec,x,u,Vvec,Gvec,r)
+            u{iter+1} = computeFixedControl(@(X,U) B(x0,zeros(m,1)),...
+                @(X) R(x0),...
+                Pvec,...
+                x{iter+1}',...
+                zeros(m,nPoints),...
+                VG(:,1:l*n),...
+                VG(:,(l*n+1):end),...
+                z);
         else
             % Compute the states
             [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
@@ -150,7 +166,7 @@ while iter < iterMax && diff > tol
                 @(X,U) B(x0,0),...
                 @(X) R(x0),...
                 @(T) interp1(tb,Pvec,T,interpType),...
-                @(T) 0,...
+                @(T) zeros(m,1),...
                 @(T) interp1(tb,s,T,interpType)');
             
             % Compute the controls
@@ -266,11 +282,33 @@ ds = -(a - S*p)'*s - c'*q*z(t);
 end
 
 % Additional Functions for the Fixed final state version of the problem
+
+function dx = fixedDynamics(t,x,A,B,R,P,U,V,G,rT)
+Pt = P(t);
+Vt = V(t);
+Gt = G(t);
+n = sqrt(length(Pt));
+l = sqrt(size(Gt,2));
+p = reshape(Pt,n,n);
+v = reshape(Vt,n,l);
+g = reshape(Gt,l,l);
+a = A(x);
+u = U(t);
+b = B(x,u);
+r = R(x);
+if all(Gt == 0)
+    dx = (a-b/r*b'*p)*x;
+else
+    dx = a*x-b/r*b'*((p-v/g*v')*x + v/g*rT);
+end
+
+end
+
 function dVG = fixedGains(t,VG,A,B,R,P,X,U,l)
 Pt = P(t);
 n = sqrt(length(Pt));
 p = reshape(Pt,n,n);
-V = reshape(VG(1:l*n),l,n); %Turn vector into matrix if needed
+V = reshape(VG(1:l*n),n,l); 
 x = X(t);
 u = U(t);
 a = A(x);
@@ -289,6 +327,10 @@ for i = 1:size(x,2)
     P = reshape(Pvec(end-i+1,:),n,n);
     V = reshape(Vvec(end-i+1,:),n,l);
     G = reshape(Gvec(end-i+1,:),l,l);
-    U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*((P + V/G*V')*x(:,i) + V/G*r);
+    if all(Gvec(end-i+1) == 0)
+        U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*P*x(:,i);
+    else
+        U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*((P + V/G*V')*x(:,i) + V/G*r);
+    end
 end
 end
