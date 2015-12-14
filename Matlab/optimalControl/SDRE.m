@@ -1,6 +1,6 @@
 function sol = SDRE(x0,tf,A,B,C,Q,R,F,z)
 
-nPoints = 1000;
+nPoints = 200;
 t = linspace(0,tf,nPoints);
 n = length(x0);
 %Check the input matrices
@@ -81,6 +81,9 @@ for i = 1:nPoints-1
     u(:,i+1) = U(x(:,i+1));
 end
 
+sol.cost = computeCost(t, @(T) interp1(t,x',T)',...
+                @(T) interp1(t,u',T)',Q,R,F);
+disp(['SDRE Cost: ',num2str(sol.cost)])
 sol.state = x';
 sol.control = u;
 sol.P = P;
@@ -88,6 +91,15 @@ if tracking
     sol.g = G;
 end
 sol.time = t;
+
+end
+
+function J = computeCost(t,x,u,Q,R,S)
+Lfun = @(t,L,x,u) x(t)'*Q(x(t))*x(t) + u(t)'*R(u(t))*u(t);
+[~,L] = ode45(Lfun,[t(1),t(end)],0,[],x,u);
+xf = x(t(end));
+J = L(end) + xf'*S(xf)*xf;
+
 
 end
 

@@ -253,6 +253,11 @@ if (iter == iterMax) && diff > tol
         ' the convergence tolerance (currently set to ',num2str(tol),').\n'])
 end
 
+J = computeCost(t, @(T) interp1(t,x{iter},T,interpType)',...
+                @(T) interp1(t,u{iter},T,interpType),Q,R,F);
+            
+disp(['ASRE Cost: ',num2str(J)])
+
 for i = nPoints:-1:1 
     P{i} = reshape(Pvec(i,:),n,n);
     if fixedFS
@@ -260,7 +265,7 @@ for i = nPoints:-1:1
         G{i} =  reshape(VG(i,(l*n+1):end),l,l);
     end
 end
-
+sol.cost = J;
 sol.state = x{end};
 sol.control = u{end}; %Open loop control
 sol.P = P;
@@ -325,6 +330,15 @@ r = R(x);
 q = Q(x);
 S = (b/r)*b';
 ds = -(a - S*p)'*s - c'*q*z(t);
+
+end
+
+function J = computeCost(t,x,u,Q,R,S)
+Lfun = @(t,L,x,u) x(t)'*Q(x(t))*x(t) + u(t)'*R(u(t))*u(t);
+[~,L] = ode45(Lfun,[t(1),t(end)],0,[],x,u);
+xf = x(t(end));
+J = L(end) + xf'*S(xf)*xf;
+
 
 end
 
