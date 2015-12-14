@@ -11,8 +11,11 @@
 %   R(x) is the control weight matrix in the Lagrange cost
 %   F(x) is the state/output weight matrix of the Mayer cost
 %   z(t) is a function defining a reference trajectory to be followed and
-%        is optional. It can be a constant vector, or it should return a
-%        column vector with (1 <= l <= n) elements.
+%        is optional. It should return a column vector with (1 <= l <= n)
+%        elements. It z is a constant vector the problem is interpreted as
+%        regulating the state with fixed final conditions Cx = z(tf). If
+%        instead a constant reference trajectory is desired, z(t) should be
+%        a function handle returning a constant value or vector.
 %
 % References:
 % State Regulation:
@@ -67,17 +70,16 @@ if ~isa(F,'function_handle')
 end
 %Determine if we're tracking or regulating
 tracking = false;
+fixedFS = false; % Any endpoint constraints?
 if nargin < 9 || isempty(z)
-    % Have to check nargin but don't need to actually do anything here
+    disp('Problem Type: Regulation')
 elseif ~isa(z,'function_handle')
-    if any(z ~= 0)
-        tracking = true;
-        z = @(t) z(:);
-    end
+    fixedFS = true;
+    disp('Problem Type: Regulation with state constraints at final time.')
+    l = length(z);
 else
+    disp('Problem Type: Reference Tracking')
     tracking = true;  
-end
-if tracking
     for i = 1:nPoints
         Z(:,i) = z(t(i)); % Loop in case z isn't vectorized.
     end
@@ -93,10 +95,17 @@ while iter < iterMax && diff > tol
     if ~iter % First iteration is LTI
         
         % Integrate the finite-time riccati equation backward
-        [~,Pvec] = ode45(@Riccati,tb,reshape(C(x0)'*F(x0)*C(x0),[],1),[],...
+        if fixedFS
+            Pf = reshape(F(x0),[],1);
+            Cfun = @(X) eye(n);
+        else
+            Pf = reshape(C(x0)'*F(x0)*C(x0),[],1);
+            Cfun = @(X) C(x0);
+        end
+        [~,Pvec] = ode45(@Riccati,tb,Pf,[],...
             @(X) A(x0),...
             @(X,U) B(x0,0),...
-            @(X) C(x0),...
+            Cfun,...
             @(X) Q(x0),...
             @(X) R(x0),...
             @(X)x0,...
@@ -107,7 +116,7 @@ while iter < iterMax && diff > tol
             sf = C(x0)'*F(x0)*z(tf);
             [~,s] = ode45(@feedforward,tb,sf,[],...
                 @(X) A(x0),...
-                @(X,U) B(x0,0),...
+                @(X,U) B(x0,zeros(m,1)),...
                 @(X) C(x0),...
                 @(X) Q(x0),...
                 @(X) R(x0),...
@@ -115,23 +124,39 @@ while iter < iterMax && diff > tol
                 @(X)x0,...
                 @(T)zeros(m,1),...
                 z);
+        elseif fixedFS
+            Vf = C(x0)';
+            Gf = zeros(l);
+            [~,VG] = ode45(@fixedGains,tb,[Vf(:);Gf(:)],[],...
+                @(X) A(x0),...
+                @(X,U) B(x0,zeros(m,1)),...
+                @(X) R(x0),...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(X) x0,...
+                @(T) zeros(m,1),l);
         else
             s = zeros(nPoints,n);
         end      
         
-        % Compute the states
-        [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
-            @(X) A(x0),...
-            @(X,U) B(x0,0),...
-            @(X) R(x0),...
-            @(T) interp1(tb,Pvec,T,interpType),...
-            @(T) 0,...
-            @(T) interp1(tb,s,T,interpType)');
-        
-        % Compute the controls
-        u{iter+1} = computeControl(@(X,U) B(x0,0), @(X) R(x0),Pvec,...
-            x{iter+1}',zeros(m,nPoints),s');
-        
+        if fixedFS
+            % Compute the states:
+            
+            % Compute the controls
+            computeFixedControl(B,R,Pvec,x,u,Vvec,Gvec,r)
+        else
+            % Compute the states
+            [~,x{iter+1}] = ode45(@dynamics,t,x0,[],...
+                @(X) A(x0),...
+                @(X,U) B(x0,0),...
+                @(X) R(x0),...
+                @(T) interp1(tb,Pvec,T,interpType),...
+                @(T) 0,...
+                @(T) interp1(tb,s,T,interpType)');
+            
+            % Compute the controls
+            u{iter+1} = computeControl(@(X,U) B(x0,0), @(X) R(x0),Pvec,...
+                x{iter+1}',zeros(m,nPoints),s');
+        end
     else % Recursive LTV systems
         
         %Integrate the finite-time riccati equation backward
@@ -238,4 +263,32 @@ q = Q(x);
 S = (b/r)*b';
 ds = -(a - S*p)'*s - c'*q*z(t);
 
+end
+
+% Additional Functions for the Fixed final state version of the problem
+function dVG = fixedGains(t,VG,A,B,R,P,X,U,l)
+Pt = P(t);
+n = sqrt(length(Pt));
+p = reshape(Pt,n,n);
+V = reshape(VG(1:l*n),l,n); %Turn vector into matrix if needed
+x = X(t);
+u = U(t);
+a = A(x);
+b = B(x,u);
+r = R(x);
+K = r\b'*p;
+dV = -(a-b*K)'*V;
+dG = V'*b/r*b'*V;
+dVG = [dV(:);dG(:)];
+end
+
+function U = computeFixedControl(B,R,Pvec,x,u,Vvec,Gvec,r)
+n = sqrt(size(Pvec,2));
+l = sqrt(size(Gvec,2));
+for i = 1:size(x,2)
+    P = reshape(Pvec(end-i+1,:),n,n);
+    V = reshape(Vvec(end-i+1,:),n,l);
+    G = reshape(Gvec(end-i+1,:),l,l);
+    U(:,i) = -R(x(:,i))\B(x(:,i),u(:,i))'*((P + V/G*V')*x(:,i) + V/G*r);
+end
 end
