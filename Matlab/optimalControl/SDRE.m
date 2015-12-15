@@ -1,6 +1,6 @@
 function sol = SDRE(x0,tf,A,B,C,Q,R,F,z)
 
-nPoints = 200;
+nPoints = 500;
 t = linspace(0,tf,nPoints);
 n = length(x0);
 %Check the input matrices

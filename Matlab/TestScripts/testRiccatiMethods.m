@@ -40,31 +40,28 @@ g = 9.81;
 [f,j] = InvertedPendulum();
 A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
 B = [0; 1/I];
-r = @(t) 0.03*sin(t);
-R = .000001;
+r = @(t) sin(t);
+R = .07;
 C = [1,0]; %Track the position
-Q = @(x) (100+10*x(1).^4);
-F = 0;
+Q = @(x) (1000);
+F = 1;
 tf = 10;
 x0 = [0;0];
 sol = ASRE(x0,tf,A,B,C,Q,R,F,r);
+sol2 = SDRE(x0,tf,A,B,C,Q,R,F,r);
 
 figure
 plot(sol.time,sol.state(:,1))
-hold on
+hold all 
+plot(sol2.time,sol2.state(:,1))
 plot(linspace(0,tf,50),r(linspace(0,tf,50)),'ko')
-legend('Trajectory','Reference')
+legend('ASRE Trajectory','SDRE Trajectory','Reference')
 figure
 plot(sol.time,sol.control)
+hold all
+plot(sol2.time,sol2.control)
 
-sol = SDRE(x0,tf,A,B,C,Q,R,F,r);
-figure
-plot(sol.time,sol.state(:,1))
-hold on
-plot(linspace(0,tf,50),r(linspace(0,tf,50)),'ko')
-legend('Trajectory','Reference')
-figure
-plot(sol.time,sol.control)
+
 
 %% Inverted Pendulum Swing up via Regulation
 
@@ -111,7 +108,7 @@ B = [0; 1/I];
 R = 1;
 Q = @(x) 0*eye(2);
 F = 0*eye(2);
-tf = 8;
+tf = 3;
 x0 = [pi;0];
 xf = [0];
 C = [1,0];
