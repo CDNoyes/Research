@@ -1,6 +1,6 @@
 function sol = SDRE(x0,tf,A,B,C,Q,R,F,z)
-
-nPoints = 500;
+version1 = false;
+nPoints = 5000;
 t = linspace(0,tf,nPoints);
 n = length(x0);
 %Check the input matrices
@@ -56,7 +56,8 @@ x = [x0(:),zeros(n,nPoints-1)];
 u = zeros(m,nPoints);
 for i = 1:nPoints-1
     xc = x(:,i);
-%     Pss = care(A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc));
+
+    if version1
     Pss = -care(-A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc)); %We want negative def. Pss
     Acl = A(xc)-B(xc)/R(xc)*B(xc)'*Pss;
     D = lyap(Acl,-B(xc)/R(xc)*B(xc)');
@@ -71,6 +72,16 @@ for i = 1:nPoints-1
         G{i} = g;
     else
         g = zeros(m,1);
+    end
+    
+    else % Version2 from Cimen 2009 Autopilot paper
+        P{i} = care(A(xc),B(xc),C(xc)'*Q(xc)*C(xc),R(xc));
+        if tracking
+            g = -(A(xc)-B(xc)/R(xc)*B(xc)'*P{i})'\C(xc)'*Q(xc)*z(t(i));
+            G{i} = g;
+        else
+            g = zeros(m,1); 
+        end
     end
     U = @(X) -R(X)\B(X)'*(P{i}*X-g);
     [~,xi] = ode45(@dynamics,[t(i),t(i+1)],xc,[],A,B,U);

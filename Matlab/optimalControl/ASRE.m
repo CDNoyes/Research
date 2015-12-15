@@ -34,7 +34,7 @@ function sol = ASRE(x0,tf,A,B,C,Q,R,F,z)
 % n = OCP.dimension.state;
 % m = OCP.dimension.control;
 
-interpType = 'nearest';
+interpType = 'cubic'; %nearest, linear, cubic, spline
 nPoints = 1000; % Very little impact on solution quality
 t = linspace(0,tf,nPoints);
 tb = tf - t;
