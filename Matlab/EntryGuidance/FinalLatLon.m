@@ -3,7 +3,7 @@
 %   FINALLATLON(THETA, PHI, PSI, DR, CR) computes the desired latitude and
 %   longitude given an initial longitude THETA, latitude PHI, heading angle
 %   PSI, and downrange and crossrange requirements, DR and CR respectively.
-
+%
 %   The angle inputs must be in radians and the distance inputs must be in
 %   kilometers.
 %
