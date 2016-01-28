@@ -4,19 +4,21 @@
 %   This particular implementation is for the entry equations with range as
 %   the independent variable.
 
-function [A,B,C] = EntryLongSDC(x,g,L,D)
+function [A,B,C] = EntryLongSDC(planetModel,vehicleModel)
 
 % x = [r,V,gamma,sigma]
+
+A = @(X) Amatrix(X,planetModel,vehicleModel);
+B = [0;0;0;1];
+C = @(X) Cmatrix(X,planetModel,vehicleModel);
+end
+function A = Amatrix(x,planetModel,vehicleModel)
 r = x(1);
 V = x(2);
 gamma = x(3);
 sigma = x(4);
-
-%Preallocate:
+[g,L,D] = EntryForces(x,planetModel,vehicleModel);
 A = zeros(4,4);
-B = zeros(4,1);
-B(4) = 1;
-C = zeros(1,4);
 
 %Radius:
 A(1,3) = tan(gamma)/gamma;
@@ -55,8 +57,17 @@ A(3,4) = w4/wt*fpa_prime/sigma; %This is not well-behaved for sigma = 0
 
 %Bank Angle:
 %All zero since the bank angle is affine in the pseudo-control u
+end
 
 %% Drag-tracking output matrix:
+function C = Cmatrix(x,planetModel,vehicleModel)
+
+r = x(1);
+V = x(2);
+% gamma = x(3);
+% sigma = x(4);
+[~,~,D] = EntryForces(x,planetModel,vehicleModel);
+C = zeros(1,4);
 w1 = 0.5;
 w2 = 0.5;
 C(1) = w1*D/r;
