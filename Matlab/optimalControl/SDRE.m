@@ -17,6 +17,8 @@ if ~isa(B,'function_handle')
 elseif isa(B,'function_handle') && (nargin(B) == 2)
     warning('Nonaffine B matrix will be affinized by setting u = 0')
     B = @(x) B(x,zeros(m,1));
+elseif isa(B,'function_handle') && (nargin(B) == 1)
+
 else
     error('Input B must be constant, function of state B(x), or state/control B(x,u)')
 end
