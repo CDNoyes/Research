@@ -38,7 +38,7 @@ b = .1;
 I = m*l^2;
 g = 9.81;
 [f,j] = InvertedPendulum();
-A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
+A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I];
 B = [0; 1/I];
 r = @(t) sin(t);
 R = 1;
@@ -72,7 +72,7 @@ b = .1;
 I = m*l^2;
 g = 9.81;
 [f,j] = InvertedPendulum();
-A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
+A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I];
 B = [0; 1/I];
 R = 300;
 Q = @(x) 0*eye(2);
@@ -103,7 +103,7 @@ b = .1;
 I = m*l^2;
 g = 9.81;
 [f,j] = InvertedPendulum();
-A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),0)/I, -b/I];
+A = @(x) [0, 1; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I];
 B = [0; 1/I];
 R = 1;
 Q = @(x) 0*eye(2);
@@ -117,5 +117,45 @@ sol = ASRE(x0,tf,A,B,C,Q,R,F,xf);
 figure
 plot(sol.time,sol.state)
 
+figure
+plot(sol.time,sol.control)
+
+
+%% Inverted Pendulum Tracking with constrained input
+clc; clear;
+m = 1; %kg
+l = 0.5; %m
+b = .1;
+I = m*l^2;
+g = 9.81;
+[f,j] = InvertedPendulum();
+% A = @(x) [0, 1, 0; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I, ReplaceNAN(Saturate(x(3),-5,5)/x(3),0)/I;0,0,0];
+% A = @(x) [0, 1, 0; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I, 1/I;0,0,0];
+%Try the "integral servomechanism" method
+A = @(x) [0, 1, 0, 0; m*g*l*ReplaceNAN(sin(x(1))/x(1),1)/I, -b/I, ReplaceNAN(Saturate(x(3),-5,5)/x(3),0)/I, 0; 0,0,0,0;1, 0, 0, 0];
+
+B = [0; 0; 1e2;0];
+r = @(t) [sin(t);cos(t);-cos(t)];
+R = 1;
+C = [1,0,0,0;0,1,0,0;0,0,0,1]; %Track the position, its derivative, and its integral
+Q = @(x) diag([10000,1000,0]);
+l = size(C,1);
+F = diag([10,1,1]);
+tf = 10;
+x0 = [0;0;5;0];
+sol = ASRE(x0,tf,A,B,C,Q,R,F,r);
+
+figure
+subplot 211
+semilogy(sol.time,abs(sol.state(:,1:l)-r(sol.time)'))
+ylabel('Error')
+subplot 212
+plot(sol.time,sol.state(:,1))
+hold all
+plot(sol.time,sol.state(:,2))
+plot(sol.time,r(sol.time)')
+legend('Position','Velocity','Desired')
+figure
+plot(sol.time,Saturate(sol.state(:,3),-5,5))
 figure
 plot(sol.time,sol.control)
