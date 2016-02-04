@@ -254,7 +254,7 @@ if (iter == iterMax) && diff > tol
 end
 
 J = computeCost(t, @(T) interp1(t,x{iter},T,interpType)',...
-                @(T) interp1(t,u{iter},T,interpType),Q,R,F);
+                @(T) interp1(t,u{iter},T,interpType),Q,R,F,C,z);
             
 disp(['ASRE Cost: ',num2str(J)])
 
@@ -333,11 +333,11 @@ ds = -(a - S*p)'*s - c'*q*z(t);
 
 end
 
-function J = computeCost(t,x,u,Q,R,S)
-Lfun = @(t,L,x,u) x(t)'*Q(x(t))*x(t) + u(t)'*R(u(t))*u(t);
+function J = computeCost(t,x,u,Q,R,S,C,z)
+Lfun = @(t,L,x,u) (C(x(t))*x(t)-z(t))'*Q(x(t))*(C(x(t))*x(t)-z(t)) + u(t)'*R(u(t))*u(t);
 [~,L] = ode45(Lfun,[t(1),t(end)],0,[],x,u);
 xf = x(t(end));
-J = L(end) + xf'*S(xf)*xf;
+J = L(end) + (C(xf)*xf-z(t(end)))'*S(xf)*(C(xf)*xf-z(t(end)));
 
 
 end
