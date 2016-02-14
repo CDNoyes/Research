@@ -8,7 +8,7 @@ function dX = PlannerDynamics(t,x,sigma,planetModel,vehicleModel)
 
 r_eq = planetModel.radiusEquatorial;
 
-%Check parachute constraints - stop if too slow or too low.
+%Check parachute constraints - stop if slow enough or too low.
 hmin = 6; %km
 vmin = 480; %m/s
 if x(4) < vmin || (x(1)-r_eq)/1000 < hmin

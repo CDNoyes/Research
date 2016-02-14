@@ -1,4 +1,4 @@
-function [rho, a, hs,a_prime,a_dot,rho_dot,rho_ddot,rho_dddot] = MarsAtmosphericDensity(h,h_dot)
+function [rho, a, hs,a_prime,a_dot,rho_dot] = MarsAtmosphericDensity(h,h_dot)
 % input  h, in meters
 % input  h_dot, in meters/second (recall h_dot == r_dot)
 % output rho, in kg/m^3
@@ -20,8 +20,7 @@ end
 hs = 9354.5;
 rho = 0.0158*exp(-h/hs); %Simple exponential model
 rho_dot = rho*h_dot/-hs;
-rho_ddot = rho*(h_dot/-hs)^2;
-rho_dddot = rho*(h_dot/-hs)^3;
+% rho_ddot = -rho*((h_dot/hs)^2 + h_ddot/hs);
 
 % Local Speed of Sound
 b = [223.8 -0.2004e-3 -1.588e-8 1.404e-13];
