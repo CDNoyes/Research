@@ -23,6 +23,7 @@ end
 end
 
 function [alpha, k] = computeSMOGains(lambda)
+% -lambda is where the three observer poles are placed
 
 alpha = (factorial(3)./(factorial(1:3).*factorial(3-(1:3)))).*lambda.^(1:3);
 k = [2.5852,14.2055,19.5150];
