@@ -22,7 +22,11 @@ CR = 0;
 
 %Show statistics and plots
 tf = EntryAnalysis(t,x,DR,CR);
-EntryPlots(t,x,DR,CR)
+ref = TrajectorySummary(t,x,DR,CR);
+EntryPlots(ref)
+
+
+
 
 %% Bank Angle Dynamics - Applying acceleration constraints
 dtr = pi/180;
