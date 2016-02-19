@@ -30,28 +30,22 @@ rateMax = 20*dtr;
 accMax = 5*dtr;
 Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax);
 
-tf = EntryAnalysis(t,x,DR,CR);
-EntryPlots(t,x,DR,CR)
-
-for i = 1:length(t)
-    [~,L(i),D(i)] = EntryForces(x(i,:),mars,vm);
-end
+ref = TrajectorySummary(t,x,DR,CR);
+EntryPlots(ref)
 
 %% Fly the open loop trajectory with the drag observer
 
-x0 = [3540e3; -90.07*dtr; -43.90*dtr; 5505; -14.15*dtr; 4.99*dtr];
-xhat0 = [D(1);0;0];
+x0 = ref.state(1,:)';
+xhat0 = [ref.D(1);0;0];
 [t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),mars,vm),[0,tf],[x0;xhat0]);
 
 tf = EntryAnalysis(t,x,DR,CR);
-EntryPlots(t,x,DR,CR)
+obs = TrajectorySummary(t,x,DR,CR);
+EntryPlots(obs)
 
 %Compare observed quantities with those computed directly:
-for i = 1:length(t)
-    [~,L(i),D(i)] = EntryForces(x(i,:),mars,vm);
-end
 figure
-plot(t,abs(D'-x(:,7)))
+plot(t,abs(obs.D'-obs.state(:,7)))
 xlabel('Time (s)')
 ylabel('Error in Drag [model-observer] (m/s^2)')
 figure
