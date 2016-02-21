@@ -1,3 +1,8 @@
+% Runs the example given in:
+% "Adaptive Sliding-Mode Control for Nonlinear Systems With Uncertain
+% Parameters" (IEEE Transactions on System, Man, and Cybernetics, April
+% 2008)
+
 clc; clear;
 x0 = [0;0;-.35];
 X0 = [x0;x0;5];

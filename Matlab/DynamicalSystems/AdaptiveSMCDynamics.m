@@ -1,3 +1,8 @@
+% ADAPTIVESMCDYNAMICS Implements the dynamics from 
+% "Adaptive Sliding-Mode Control for Nonlinear Systems With Uncertain
+% Parameters" (IEEE Transactions on System, Man, and Cybernetics, April
+% 2008)
+
 function dX = AdaptiveSMCDynamics(t,X)
 w = 0; %Noise term
 
