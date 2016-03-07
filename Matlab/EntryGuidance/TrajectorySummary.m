@@ -12,7 +12,7 @@ planet = Mars();
 vm = VehicleModel();
 % r_eq = planet.radiusEquatorial;
 % hkm = (x(:,1)-r_eq)/1000;
-E = 0.5*x(:,4).^2 - planet.mu./x(:,1); %Actual energy
+E = 0.5*x(:,4).^2 + planet.mu/planet.radiusEquatorial - planet.mu./x(:,1); %Actual energy
 En = (E-E(1))/(E(end)-E(1)); %Normalized Energy, 0 at entry and 1 at deployment
 
 [theta_t,phi_t] = FinalLatLon(x(1,2),x(1,3),x(1,6),DR_t,CR_t);
