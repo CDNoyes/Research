@@ -12,7 +12,7 @@
 %
 % Reference: "Time Varying Sliding Modes for Second Order Systems"
 
-function [T,A,B,C] = DesignSM(e0, Umax)
+function [T,A,B,C,beta] = DesignSM(e0, Umax)
 
 se0 = sign(e0);
 
@@ -22,6 +22,7 @@ T = sqrt(2*e0/Umax);
 A = Umax*se0;
 B = -se0*sqrt(2*Umax*abs(e0));
 C = [];
+beta = sqrt(2*Umax/abs(e0));
 
 
 

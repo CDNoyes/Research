@@ -2,16 +2,18 @@ function TimeVaryingSMC()
 
 x0 = [0.5;0.4];
 e0 = [x0(1),x0(2)-0.4];
-[t,x] = ode45(@dynamics,[0,40],x0,[],e0);
+[t,x] = ode45(@dynamics,[0,100],x0,[],e0);
 for i = 1:length(t)
-    [~,u(i),s(i),d(i)] = dynamics(t(i),x(i,:)',e0);
+    [~,u(i),s(i),d(i),T] = dynamics(t(i),x(i,:)',e0);
 end
-iT = find(t>1,1);
+iT = find(t>T,1);
 
 figure
 plot(x(:,1)-2*sin(0.2*t),x(:,2)-0.2*2*cos(0.2*t))
 hold on
 plot(x(iT,1)-2*sin(0.2*t(iT)),x(iT,2)-0.2*2*cos(0.2*t(iT)),'ro')
+plot(0,0,'kx',e0(1),e0(2),'ko')
+legend('Trajectory',['Time invariance (t=',num2str(t(iT)),' s)'],'Target','IC')
 title('Error trajectory')
 
 figure
@@ -23,6 +25,7 @@ legend('Ref','Ref rate','Disturbance')
 
 figure
 plot(t,u)
+title(['u_0 = ',num2str(u(1)),', u_{max} = ',num2str(max(abs(u)))])
 ylabel('u')
 
 figure
@@ -31,7 +34,7 @@ title('Sliding Surface')
 axis([0,t(end),-1,1])
 end
 
-function [dx,u,s,d] = dynamics(t,x,e0)
+function [dx,u,s,d,T] = dynamics(t,x,e0)
 
 
 %System format
@@ -46,16 +49,16 @@ yd_ddot = -0.2^2*2*sin(0.2*t);
 % Disturbance
 d = 2*sin(0.1*pi*t)+3*sin(0.2*sqrt(t+1));
 % d = 0;
-dmax = 5; %Estimated bound of the disturbance
+dmax = d; %Estimated bound of the disturbance
 
 % Error states
 e = x-[yd;yd_dot];
 
 % Sliding Surface Design Parameters
-beta = 1;
-T = 1; %The time at which the sliding surface stops moving
-B = -beta*e0(1)-e0(2);
-A = -B/T;
+[T,A,B,~,beta] = DesignSM(e0(1),8.8);
+if t == 0
+    disp(beta)
+end
 c = [beta,1];
 
 %Sliding Surface Computation
@@ -63,7 +66,8 @@ s = c*e + (A*t+B)*(t<=T);
 
 % Control
 u0 = yd_ddot-f - dmax*Saturate(s/.01,-1,1);
-u = Saturate(1/b*u0 + 1/b*(-beta*e(2)-A*(t<=T)),-10,10);
+U = 10;
+u = Saturate(1/b*u0 + 1/b*(-beta*e(2)-A*(t<=T)),-U,U);
 
 dx = [  x(2)
         f + b*u + d];
