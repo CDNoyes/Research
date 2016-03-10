@@ -31,8 +31,17 @@ if strcmpi(type,'Velocity')     % Constant Velocity:
     beta = sqrt(2*Umax/abs(e0));
     sig = @(e,t) [beta,1]*e + (A*t+B)*(t<=T); 
     U = @(b,u0,e,t) 1/b*u0 + 1/b*(-beta*e(2)-A*(t<=T));
+
+elseif strcmpi(type,'Acceleration')    
+    T = sqrt(6*abs(e0)/Umax);
+    beta = sqrt(3*Umax/2/abs(e0));
+    A = -se0*Umax/12*sqrt(6*Umax/abs(e0));
+    B = se0*Umax;
+    C = -se0*sqrt(1.5*Umax*abs(e0));
+    sig = @(e,t) [beta,1]*e + (A*t^2+B*t+C)*(t<=T); 
+    U = @(b,u0,e,t) 1/b*u0 + 1/b*(-beta*e(2)+(-2*A*t-B)*(t<=T));
     
-else                            % Terminal
+elseif strcmpi(type,'Terminal') % Terminal
     T = sqrt(6*abs(e0)/Umax);
     A = -0.5*se0*Umax;
     B = e0*sqrt(6*Umax/abs(e0));

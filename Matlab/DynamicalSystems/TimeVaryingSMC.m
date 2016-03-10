@@ -13,6 +13,7 @@ d0 = 0.6;
 % Sliding Surface Design Parameters
 % [S,controller,T] = DesignSM(e0(1),1,'Terminal');
 [S,controller,T] = DesignSM(e0(1),1,'Velocity');
+% [S,controller,T] = DesignSM(e0(1),1,'Acceleration');
 [alpha, k] = computeSMOGains(400);
 
 %Integrate the controlled trajectory
@@ -55,9 +56,9 @@ axis([0,t(end),-1,1])
 % title('Disturbance Estimate History')
 
 figure
-plot(t,x(:,1:2)-x(:,3:4))
+semilogy(t,abs(x(:,1:2)-x(:,3:4)))
 hold all
-plot(t,d-d_hat)
+semilogy(t,abs(d-d_hat))
 title('Estimation Error History')
 legend('x_1','x_2','d')
 end
@@ -79,6 +80,7 @@ yd_ddot = -0.2^2*2*sin(0.2*t);
 
 % Disturbance
 d = 2*sin(0.1*pi*t)+3*sin(0.2*sqrt(t+1));
+d = d/10;
 % d = 0;
 dmax = 5*(t<.1) + abs(d_hat)*(t>=.1); % Estimated bound of the disturbance
 
@@ -91,7 +93,7 @@ s = S(e,t);
 % Control
 u0 = yd_ddot-f - dmax*Saturate(s/.01,-1,1);
 u = controller(b,u0,e,t);
-U = 10;
+U = 100;
 u = Saturate(u,-U,U);
 
 
