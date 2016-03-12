@@ -1,13 +1,18 @@
-% SMO Sliding mode observer dynamics for drag tracking.
+% SMO Sliding mode observer dynamics for a second order system.
 %	SMO(x,D,a,b,u,k,alpha) Computes the change in estimates of drag, drag
 %	rate, and disturbance. The inputs are:
 %     x - the vector of observer states
-%     D - the measured drag acceleration
-%     a,b - Drag dynamics, D_ddot = a(x) + b(x)u
-%     u - cos(gamma), the control parameter
+%     D - the measured drag acceleration (i.e. the reference variable)
+%     a,b - scalar dynamic terms, D_ddot = a(x) + b(x)u
+%     u - the control parameter (u=cos(gamma) for entry)
 %     k - vector of linear gains
 %     alpha - vector of nonlinear gains
-
+%
+%     The gains k and alpha can be computed using computeSMOGains.
+%     Although the code itself and the help reference using this for drag
+%     tracking entry guidance, this SMO is applicable to any second order
+%     system. See TimeVaryingSMC for an example where it is applied to a
+%     vanderpol oscillator.
 function dx = SMO(x,D,a,b,u,k,alpha)
 
 e = D-x(1);
