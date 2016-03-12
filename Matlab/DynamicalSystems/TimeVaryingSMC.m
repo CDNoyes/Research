@@ -80,7 +80,7 @@ yd_ddot = -0.2^2*2*sin(0.2*t);
 
 % Disturbance
 d = 2*sin(0.1*pi*t)+3*sin(0.2*sqrt(t+1));
-d = d/10;
+% d = d/10;
 % d = 0;
 dmax = 5*(t<.1) + abs(d_hat)*(t>=.1); % Estimated bound of the disturbance
 
