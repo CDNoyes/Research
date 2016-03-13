@@ -1,4 +1,4 @@
-function [g,L,D,hs,M,a,rho,rho_dot] = EntryForces(x,planetModel,vehicleModel,ScaleFactor)
+function [g,L,D,hs,M,a,rho,rho_dot,temp] = EntryForces(x,planetModel,vehicleModel,ScaleFactor)
 
 if nargin < 4 || isempty(ScaleFactor)
     ScaleFactor.radius = 1;
