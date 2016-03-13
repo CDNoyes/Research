@@ -43,15 +43,19 @@ x0 = ref.state(1,:)';
 xhat0 = [ref.D(1);0;0];
 tic;
 [t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),mars,vm,gains),[0,max(ref.time)],[x0;xhat0]);
+for i = 1:length(t)
+    [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains);
+    
+end
 t_obs = toc;
 disp(['Simulation time: ',num2str(t_obs),' s.'])
 
 tf = EntryAnalysis(t,x,DR,CR);
 obs = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(obs)
+D_true = D_true(1:length(obs.time));
 
 %Compare observed quantities with those computed directly:
-
 lineWidth = 2;
 markerSize = 10;
 fontSize = 12;
@@ -59,11 +63,11 @@ fontWeight = 'bold';
 fontColor = 'k';
 
 figure
-plot(t,abs(obs.D'-obs.state(:,7)),'LineWidth',lineWidth)
+plot(obs.time,abs(D_true'-obs.state(:,7)),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Error in Drag [model-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
 figure
-plot(t,x(:,9),'LineWidth',lineWidth)
+plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
