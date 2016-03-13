@@ -38,6 +38,7 @@ for i = 1:length(t)
     else %Purely model
          [output.a(i),output.b(i),output.D_dot(i)] = DragFBL(output.g(i),output.L(i),output.D(i),x(i,1),x(i,4),x(i,5),output.rho(i),rho_dot,[]);
     end
+    output.D_ddot(i) = output.a(i)+output.b(i)*output.control(i);
 end
 
 end
