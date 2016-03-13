@@ -34,24 +34,25 @@ ref = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(ref)
 
 
-
+save(['EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR',num2str(DR),'_CR',num2str(CR),'.mat'],'ref','Sigma');
 %% Fly the open loop trajectory with the drag observer
-clearvars -except ref Sigma DR CR mars vm 
+clc; close all; clear;
+load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
+mars = Mars();
+vm = VehicleModel();
 [gains.alpha, gains.k] = computeSMOGains(10);
 
 x0 = ref.state(1,:)';
 xhat0 = [ref.D(1);0;0];
 tic;
-[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),mars,vm,gains),[0,max(ref.time)],[x0;xhat0]);
+[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),Mars(),VehicleModel(),gains),[0,max(ref.time)],[x0;xhat0]);
 for i = 1:length(t)
     [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains);
-    
 end
 t_obs = toc;
 disp(['Simulation time: ',num2str(t_obs),' s.'])
 
-tf = EntryAnalysis(t,x,DR,CR);
-obs = TrajectorySummary(t,x,Sigma(t),DR,CR);
+obs = TrajectorySummary(t,x,Sigma(t),ref.target.DR,ref.target.CR);
 EntryPlots(obs)
 D_true = D_true(1:length(obs.time));
 
