@@ -65,7 +65,15 @@ fontColor = 'k';
 figure
 plot(obs.time,abs(D_true'-obs.state(:,7)),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Error in Drag [model-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Error in Drag [true-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
+figure
+plot(obs.time,obs.state(:,7),'LineWidth',lineWidth)
+hold all
+plot(obs.time,obs.D,'LineWidth',lineWidth)
+legend('Observed Drag','Modeled Drag')
+xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
 figure
 plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
