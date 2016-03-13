@@ -30,23 +30,40 @@ rateMax = 20*dtr;
 accMax = 5*dtr;
 Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax);
 
-ref = TrajectorySummary(t,x,DR,CR);
+ref = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(ref)
 
+
+
 %% Fly the open loop trajectory with the drag observer
+clearvars -except ref Sigma DR CR mars vm 
+[gains.alpha, gains.k] = computeSMOGains(10);
 
 x0 = ref.state(1,:)';
 xhat0 = [ref.D(1);0;0];
-[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),mars,vm),[0,tf],[x0;xhat0]);
+tic;
+[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),mars,vm,gains),[0,max(ref.time)],[x0;xhat0]);
+t_obs = toc;
+disp(['Simulation time: ',num2str(t_obs),' s.'])
 
 tf = EntryAnalysis(t,x,DR,CR);
-obs = TrajectorySummary(t,x,DR,CR);
+obs = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(obs)
 
 %Compare observed quantities with those computed directly:
+
+lineWidth = 2;
+markerSize = 10;
+fontSize = 12;
+fontWeight = 'bold';
+fontColor = 'k';
+
 figure
-plot(t,abs(obs.D'-obs.state(:,7)))
-xlabel('Time (s)')
-ylabel('Error in Drag [model-observer] (m/s^2)')
+plot(t,abs(obs.D'-obs.state(:,7)),'LineWidth',lineWidth)
+xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Error in Drag [model-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
 figure
-plot(t,x(:,9),'k')
+plot(t,x(:,9),'LineWidth',lineWidth)
+xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)

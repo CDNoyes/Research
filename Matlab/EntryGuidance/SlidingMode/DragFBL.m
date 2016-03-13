@@ -3,19 +3,15 @@
 %   Even when using a control law not based on FBL, this function is used
 %   in the sliding mode observer
 
-function [a,b,ahat,bhat] = DragFBL(g,L,D,r,V,gamma,rho,rho_dot,D_dot)
+function [a,b,D_dot] = DragFBL(g,L,D,r,V,gamma,rho,rho_dot,D_dot)
 
 V_dot = -D-g*sin(gamma);
 g_dot = -2*g*V*sin(gamma)/r;
 h_dot = V*sin(gamma);
 
-
 if isempty(D_dot) %When using an observer, we used the observed estimate instead of the model estimate
     D_dot = D*(rho_dot/rho + 2*V_dot/V); %+ D*CD_dot/CD %neglect the variation in C_D
 end
-
-E_dot = -V*D;
-E_ddot = -V_Dot*D - V*D_dot;
 
 a1 = D_dot*(rho_dot/rho + 2*V_dot/V) - D*(rho_dot^2/rho^2 + 2*V_dot^2/V^2);
 a2 = -2*D/V*(D_dot+g_dot*sin(gamma));
@@ -28,7 +24,9 @@ b2 = D*L/h_dot*rho_dot/rho*cos(gamma);
 b = b1+b2;
 
 % The parameters with respect to Energy instead of Time
-ahat = a/(E_dot^2) - D_dot*E_ddot/(E_dot^3);
-bhat = b/(E_dot^2);
+% E_dot = -V*D;
+% E_ddot = -V_dot*D - V*D_dot;
+% ahat = a/(E_dot^2) - D_dot*E_ddot/(E_dot^3);
+% bhat = b/(E_dot^2);
 
 end
