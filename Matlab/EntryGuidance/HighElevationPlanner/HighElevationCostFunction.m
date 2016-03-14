@@ -39,7 +39,7 @@ sigma_max = 87.13*dtr;
 fun = @(t) BankAngleProfile(t,t1,t2,t3,sigma_min,sigma_max);
 
 opt = odeset('RelTol',1e-8,'AbsTol',1e-8);
-[t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),planetModel,vehicleModel),[0 tf], x0,opt);
+[t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),planetModel,vehicleModel),linspace(0, tf,1000), x0,opt);
 
 %Cost function weights:
 k_h = 1e-7;

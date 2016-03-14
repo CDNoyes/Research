@@ -32,11 +32,11 @@ output.CR = CR;
 
 observer = size(x,2) >= 9;
 for i = 1:length(t)
-    [output.g(i),output.L(i),output.D(i),~,output.M(i),output.a(i),output.rho(i),rho_dot] = EntryForces(x(i,:),planet,vm);
+    [output.g(i),output.L(i),output.D(i),~,output.M(i),output.a(i),output.rho(i),rho_dot,~,C_D,C_D_dot] = EntryForces(x(i,:),planet,vm);
     if  observer
-        [output.a(i),output.b(i),output.D_dot(i)] = DragFBL(output.g(i),output.L(i),output.D(i),x(i,1),x(i,4),x(i,5),output.rho(i),rho_dot,x(i,8));
+        [output.a(i),output.b(i),output.D_dot(i)] = DragFBL(output.g(i),output.L(i),output.D(i),x(i,1),x(i,4),x(i,5),output.rho(i),rho_dot,x(i,8),C_D,C_D_dot);
     else %Purely model
-         [output.a(i),output.b(i),output.D_dot(i)] = DragFBL(output.g(i),output.L(i),output.D(i),x(i,1),x(i,4),x(i,5),output.rho(i),rho_dot,[]);
+         [output.a(i),output.b(i),output.D_dot(i)] = DragFBL(output.g(i),output.L(i),output.D(i),x(i,1),x(i,4),x(i,5),output.rho(i),rho_dot,[],C_D,C_D_dot);
     end
     output.D_ddot(i) = output.a(i)+output.b(i)*output.control(i);
 end

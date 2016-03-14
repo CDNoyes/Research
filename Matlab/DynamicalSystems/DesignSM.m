@@ -15,7 +15,8 @@
 function [sig,U,T] = DesignSM(e0, Umax, type)
 
 if e0 == 0
-    sig = @(e,t) 0;
+    beta = 5;
+    sig = @(e,t) [beta,1]*e;
     U = @(b,u0,e,t) 1/b*u0;
     T = 0;
     return

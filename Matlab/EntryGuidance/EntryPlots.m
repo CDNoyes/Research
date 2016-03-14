@@ -85,7 +85,13 @@ xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',f
 ylabel('Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
 % Drag dynamics, for analysis
-if true
+if false
+    figure
+    plot(ts.energy_norm,ts.D, 'LineWidth',lineWidth)
+    axis([0,1,0,1.1*max(ts.D)])
+    xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
     figure
     subplot 211
     title('Drag Dynamics')

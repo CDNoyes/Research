@@ -43,19 +43,20 @@ vm = VehicleModel();
 [gains.alpha, gains.k] = computeSMOGains(10);
 
 x0 = ref.state(1,:)';
-xhat0 = [ref.D(1);0;0];
+xhat0 = [ref.D(1);ref.D_dot(1);0];
 tic;
 [t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),Mars(),VehicleModel(),gains),[0,max(ref.time)],[x0;xhat0]);
+t_obs = toc;
+disp(['Simulation time: ',num2str(t_obs),' s.'])
+
 for i = 1:length(t)
     [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains);
 end
-t_obs = toc;
-disp(['Simulation time: ',num2str(t_obs),' s.'])
 
 obs = TrajectorySummary(t,x,Sigma(t),ref.target.DR,ref.target.CR);
 EntryPlots(obs)
 D_true = D_true(1:length(obs.time));
-
+save(['EntryGuidance/HighElevationPlanner/Trajectories/ObserverTrajectory_DR',num2str(ref.target.DR),'_CR',num2str(ref.target.CR),'.mat'],'obs','Sigma');
 %Compare observed quantities with those computed directly:
 lineWidth = 2;
 markerSize = 10;
@@ -64,9 +65,10 @@ fontWeight = 'bold';
 fontColor = 'k';
 
 figure
-plot(obs.time,abs(D_true'-obs.state(:,7)),'LineWidth',lineWidth)
+semilogy(obs.time,abs(D_true'-obs.state(:,7)),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Error in Drag [true-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+title('Observer Performance')
 
 figure
 plot(obs.time,obs.state(:,7),'LineWidth',lineWidth)
