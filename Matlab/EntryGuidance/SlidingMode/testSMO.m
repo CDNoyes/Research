@@ -44,8 +44,9 @@ vm = VehicleModel();
 
 x0 = ref.state(1,:)';
 xhat0 = [ref.D(1);ref.D_dot(1);0];
+u0 = [Sigma(0);0];
 tic;
-[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T),Mars(),VehicleModel(),gains),[0,max(ref.time)],[x0;xhat0]);
+[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T+2.42),Mars(),VehicleModel(),gains),[0,max(ref.time)+20],[x0;xhat0;u0]);
 t_obs = toc;
 disp(['Simulation time: ',num2str(t_obs),' s.'])
 
@@ -78,7 +79,17 @@ legend('Observed Drag','Modeled Drag')
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
+% figure
+% plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
+% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
 figure
-plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
+plot(obs.time,obs.state(:,9)-interp1(ref.time,ref.d,obs.time),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Disturbance Estimate with nominal Offset(m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
+figure
+plot(obs.time,Saturate(obs.state(:,10)*180/pi,-87,87),'LineWidth',lineWidth)
+xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Executed Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
