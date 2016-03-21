@@ -10,8 +10,8 @@ r_eq = planetModel.radiusEquatorial;
 
 %Check parachute constraints - stop if slow enough or too low.
 hmin = 6; %km
-vmin = 480; %m/s
-if x(4) < vmin || (x(1)-r_eq)/1000 < hmin
+vmax = 420; %m/s
+if x(4) < vmax || (x(1)-r_eq)/1000 < hmin
     dX = zeros(size(x));
 else
     [g,L,D] = EntryForces(x,planetModel,vehicleModel);

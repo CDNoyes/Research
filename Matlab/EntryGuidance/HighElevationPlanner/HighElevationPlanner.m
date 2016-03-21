@@ -22,19 +22,21 @@ CR = 0;
 
 %Show statistics and plots
 tf = EntryAnalysis(t,x,DR,CR);
-ref = TrajectorySummary(t,x,DR,CR);
+dtr = pi/180;
+sigmaMin = 18.19*dtr;
+sigmaMax = 87.13*dtr;
+Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
+
+ref = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(ref)
 
 
 
 
 %% Bank Angle Dynamics - Applying acceleration constraints
-dtr = pi/180;
-sigmaMin = 18.19*dtr;
-sigmaMax = 87.13*dtr;
+
 rateMax = 20*dtr;
 accMax = 5*dtr;
-Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
 lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
@@ -43,7 +45,8 @@ KpKdH = [0.5,1.4,2.5]; %Initial Guess
 KpKdH = fminsearch(@(g)optimizeBankAngleDynamics(g,Sigma,lim,tf),KpKdH);
 [T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,KpKdH);
 err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
-disp(['Norm of error between commanded and executed bank angle: ',num2str(norm(err))])
+e = trapz(T,err);
+disp(['Norm of error between commanded and executed bank angle: ',num2str(e)])
 figure
 subplot 211
 plot(T,Sigma(T)/dtr,'r--')
