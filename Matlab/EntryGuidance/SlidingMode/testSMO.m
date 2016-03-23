@@ -36,6 +36,9 @@ EntryPlots(ref)
 
 save(['EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR',num2str(DR),'_CR',num2str(CR),'.mat'],'ref','Sigma');
 %% Fly the open loop trajectory with the drag observer
+% Conclusions: The tracking is perfect. Without acceleration constraint,
+% the error is 0.388 meters. With acceleration constraints but optimized
+% gains and prediction horizon, the total range error is 225 meters.
 clc; close all; clear;
 load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
 mars = Mars();
@@ -46,12 +49,12 @@ x0 = ref.state(1,:)';
 xhat0 = [ref.D(1);ref.D_dot(1);0];
 u0 = [Sigma(0);0];
 tic;
-[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T+2.42),Mars(),VehicleModel(),gains),[0,max(ref.time)+20],[x0;xhat0;u0]);
+[t,x] = ode45(@(T,X) EntrySMO(T,X,Sigma(T+2.42),Mars(),VehicleModel(),gains,ref),[0,max(ref.time)+20],[x0;xhat0;u0]);
 t_obs = toc;
 disp(['Simulation time: ',num2str(t_obs),' s.'])
 
 for i = 1:length(t)
-    [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains);
+    [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains,ref);
 end
 
 obs = TrajectorySummary(t,x,Sigma(t),ref.target.DR,ref.target.CR);
@@ -79,15 +82,15 @@ legend('Observed Drag','Modeled Drag')
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
-% figure
-% plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
-% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-
 figure
-plot(obs.time,obs.state(:,9)-interp1(ref.time,ref.d,obs.time),'LineWidth',lineWidth)
+plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Disturbance Estimate with nominal Offset(m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+
+% figure
+% plot(obs.time,obs.state(:,9)-interp1(ref.time,ref.d,obs.time),'LineWidth',lineWidth)
+% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% ylabel('Disturbance Estimate with nominal Offset(m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
 figure
 plot(obs.time,Saturate(obs.state(:,10)*180/pi,-87,87),'LineWidth',lineWidth)
