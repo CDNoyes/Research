@@ -13,10 +13,10 @@ if isempty(D_dot) %When using an observer, we used the observed estimate instead
     D_dot = D*(rho_dot/rho + 2*V_dot/V + CD_dot/CD); 
 end
 
-a1 = D_dot*(rho_dot/rho + 2*V_dot/V + CD_dot/CD) - D*(rho_dot^2/rho^2 + 2*V_dot^2/V^2 + CD_dot^2/CD^2);
+a1 = D_dot*(rho_dot/rho + 2*V_dot/V + CD_dot/CD) - D*(2*V_dot^2/V^2 + CD_dot^2/CD^2);
 a2 = -2*D/V*(D_dot+g_dot*sin(gamma));
 a3 = -2*D*g*cos(gamma)^2 * (1/r - g/V^2);
-a4 = -D*(rho_dot/rho)^2 + D*rho_dot/rho/h_dot*(-g-D*sin(gamma)+V^2/r*cos(gamma)^2);
+a4 = D*rho_dot/rho/h_dot*(-g-D*sin(gamma)+V^2/r*cos(gamma)^2);
 a = a1 + a2 + a3 + a4;
 
 b1 = -2*D*L*g*cos(gamma)/V^2;
