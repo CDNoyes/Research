@@ -17,7 +17,7 @@ sig = asin(sin(theta-theta0).*cos(phi)./sin(LF));
 zeta = sig+psi0-pi/2;
 
 DR = real(r_p*acos(cos(LF)./cos(asin(sin(LF).*sin(zeta)))));
-CR = real(r_p*asin(sin(LF).*sin(zeta)));
+CR = -real(r_p*asin(sin(LF).*sin(zeta)));
 DR(isnan(DR)) = 0;
 CR(isnan(CR)) = 0;
 
