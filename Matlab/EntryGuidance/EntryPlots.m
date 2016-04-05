@@ -88,17 +88,18 @@ ylabel('Heading (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontC
 grid on
 box on
 set(gcf,'name','Heading', 'numbertitle','off','WindowStyle','docked')
+
 %CONTROL
 figure(7)
 subplot 211
-plot(t,sig/dtr, 'LineWidth',lineWidth)
+plot(t,Saturate(sig/dtr,-90,90), 'LineWidth',lineWidth)
 grid on
-axis([0,max(t),-90,90])
+axis([0,max(t),-95,95])
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 subplot 212
-plot(ts.energy_norm,sig/dtr, 'LineWidth',lineWidth)
-axis([0,1,-90,90])
+plot(ts.energy_norm,Saturate(sig/dtr,-90,90), 'LineWidth',lineWidth)
+axis([0,1,-95,95])
 xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 grid on
@@ -109,20 +110,20 @@ set(gcf,'name','Bank Profile', 'numbertitle','off','WindowStyle','docked')
 
 if isfield(ts,'observer') && ts.observer
     figure(8)
-    plot(ts.time,ts.state(:,7),'LineWidth',lineWidth)
+    plot(ts.energy_norm,ts.state(:,7),'LineWidth',lineWidth)
     hold all
-    plot(ts.time,ts.D,'LineWidth',lineWidth)
-    plot(ts.time,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
+    plot(ts.energy_norm,ts.D,'LineWidth',lineWidth)
+    plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
 
     legend('Observed Drag','Modeled Drag', 'Modeled Drag/cos(\gamma)')
-    xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     set(gcf,'name','Drag Profile', 'numbertitle','off','WindowStyle','docked')
     grid on
     
     figure(9)
-    plot(ts.time,ts.state(:,9),'LineWidth',lineWidth)
-    xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    plot(ts.energy_norm,ts.state(:,9),'LineWidth',lineWidth)
+    xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     grid on
     set(gcf,'name','Disturbance Estimate', 'numbertitle','off','WindowStyle','docked')
@@ -134,12 +135,12 @@ subplot 211
 plot(ts.time,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
 grid on
 title('Drag divided by cos(fpa)')
-axis([0,max(t),-90,90])
+axis([0,max(t),-10,90])
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel(' (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 subplot 212
 plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-axis([0,1,-90,90])
+axis([0,1,-10,90])
 xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('m/s^2','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 grid on
