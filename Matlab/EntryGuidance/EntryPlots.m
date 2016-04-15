@@ -14,6 +14,17 @@ r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
 e = ts.energy_norm;
 
+if true
+    % Find max L, max D, max L/D indices
+    [Lmax,i_Lmax] = max(ts.L);
+    [Lgmax,i_Lgmax] = max(ts.L.*cos(x(:,5))');
+    
+    [Dmax,i_Dmax] = max(ts.D);
+    [LoDmax,i_LoDmax] = max(ts.L./ts.D);
+    
+    
+end
+
 lineWidth = 2;
 markerSize = 10;
 fontSize = 12;
@@ -163,7 +174,10 @@ if true
     n = n+1;
     figure(n)
     plot(ts.L./ts.D,abs(ts.CR),'LineWidth',lineWidth)
+    hold on
+    plot(LoDmax, abs(ts.CR(i_LoDmax)),'ko','LineWidth',lineWidth,'MarkerSize',markerSize)    
     set(gcf,'name','Crossrange vs L/D', 'numbertitle','off','WindowStyle','docked')
+    legend(' ','Max L/D')
     
     n = n+1;
     figure(n)
@@ -174,7 +188,10 @@ if true
     n = n+1;
     figure(n)
     plot(ts.L'.*cos(x(:,5)), abs(ts.CR),'LineWidth',lineWidth)
+    hold on
+    plot(Lgmax, abs(ts.CR(i_Lgmax)),'ko','LineWidth',lineWidth,'MarkerSize',markerSize)    
     set(gcf,'name','Crossrange vs Lcos\gamma', 'numbertitle','off','WindowStyle','docked')
+    legend(' ','Max Lcos\gamma')
     grid on
     
     n = n+1;
