@@ -12,6 +12,7 @@ sig = ts.sigma;
 u = ts.control;
 r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
+e = ts.energy_norm;
 
 lineWidth = 2;
 markerSize = 10;
@@ -20,7 +21,8 @@ fontWeight = 'bold';
 fontColor = 'k';
 
 % Altitude vs Velocity
-figure(1)
+n = 1;
+figure(n)
 grid on
 box on
 set(gcf,'name','Altitude vs Velocity', 'numbertitle','off','WindowStyle','docked')
@@ -32,7 +34,8 @@ ylabel('Altitude (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontC
 title(['Final altitude: ',num2str(hkm(end)), ' km'],'FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
 %DR v CR
-figure(2)
+n = n+1;
+figure(n)
 plot(ts.CR,ts.DR, 'LineWidth',lineWidth)
 ylabel('Downrange (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 xlabel('Crossrange (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
@@ -42,7 +45,8 @@ box on
 set(gcf,'name','Downrange vs Crossrange', 'numbertitle','off','WindowStyle','docked')
 
 %Lat/Lon
-figure(3)
+n = n+1;
+figure(n)
 plot(x(1,3)/dtr,x(1,2)/dtr,'ko','MarkerSize',markerSize)
 hold on
 plot(ts.target.lat/dtr,ts.target.lon/dtr,'kx','MarkerSize',markerSize)
@@ -56,7 +60,8 @@ box on
 set(gcf,'name','Groundtrack', 'numbertitle','off','WindowStyle','docked')
 
 %Flight path angle
-figure(5)
+n = n+1;
+figure(n)
 subplot 211
 plot(t,x(:,5)/dtr, 'LineWidth',lineWidth)
 grid on
@@ -73,7 +78,8 @@ box on
 set(gcf,'name','FPA', 'numbertitle','off','WindowStyle','docked')
 
 %Heading angle
-figure(6)
+n = n+1;
+figure(n)
 subplot 211
 plot(t,x(:,6)/dtr, 'LineWidth',lineWidth)
 grid on
@@ -90,7 +96,8 @@ box on
 set(gcf,'name','Heading', 'numbertitle','off','WindowStyle','docked')
 
 %CONTROL
-figure(7)
+n = n+1;
+figure(n)
 subplot 211
 plot(t,Saturate(sig/dtr,-90,90), 'LineWidth',lineWidth)
 grid on
@@ -109,19 +116,21 @@ set(gcf,'name','Bank Profile', 'numbertitle','off','WindowStyle','docked')
 
 
 if isfield(ts,'observer') && ts.observer
-    figure(8)
+    n = n+1;
+    figure(n)
     plot(ts.energy_norm,ts.state(:,7),'LineWidth',lineWidth)
     hold all
     plot(ts.energy_norm,ts.D,'LineWidth',lineWidth)
     plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-
+    
     legend('Observed Drag','Modeled Drag', 'Modeled Drag/cos(\gamma)')
     xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     set(gcf,'name','Drag Profile', 'numbertitle','off','WindowStyle','docked')
     grid on
     
-    figure(9)
+    n = n+1;
+    figure(n)
     plot(ts.energy_norm,ts.state(:,9),'LineWidth',lineWidth)
     xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
@@ -130,35 +139,62 @@ if isfield(ts,'observer') && ts.observer
 end
 
 %Experimental - Reference
-figure(10)
-subplot 211
-plot(ts.time,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-grid on
-title('Drag divided by cos(fpa)')
-axis([0,max(t),-10,90])
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel(' (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-subplot 212
-plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-axis([0,1,-10,90])
-xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('m/s^2','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-grid on
-box on
-set(gcf,'name','Reference Profile', 'numbertitle','off','WindowStyle','docked')
+% n = n+1;
+% figure(n)
+% subplot 211
+% plot(ts.time,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
+% grid on
+% title('Drag divided by cos(fpa)')
+% axis([0,max(t),-10,90])
+% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% ylabel(' (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% subplot 212
+% plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
+% axis([0,1,-10,90])
+% xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% ylabel('m/s^2','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+% grid on
+% box on
+% set(gcf,'name','Reference Profile', 'numbertitle','off','WindowStyle','docked')
 
 
-
+% Various experimental crossrange plans
+if true
+    n = n+1;
+    figure(n)
+    plot(ts.L./ts.D,abs(ts.CR),'LineWidth',lineWidth)
+    set(gcf,'name','Crossrange vs L/D', 'numbertitle','off','WindowStyle','docked')
+    
+    n = n+1;
+    figure(n)
+    plot(ts.D, abs(ts.CR),'LineWidth',lineWidth)
+    set(gcf,'name','Crossrange vs Drag', 'numbertitle','off','WindowStyle','docked')
+    grid on
+    
+    n = n+1;
+    figure(n)
+    plot(ts.L'.*cos(x(:,5)), abs(ts.CR),'LineWidth',lineWidth)
+    set(gcf,'name','Crossrange vs Lcos\gamma', 'numbertitle','off','WindowStyle','docked')
+    grid on
+    
+    n = n+1;
+    figure(n)
+    plot(ts.state(:,4), abs(ts.CR),'LineWidth',lineWidth)
+    set(gcf,'name','Crossrange vs Velocity', 'numbertitle','off','WindowStyle','docked')
+    grid on
+end
 
 % Drag dynamics, for analysis
 if false
-    figure
+    n = n+1;
+    figure(n)
     plot(ts.energy_norm,ts.D, 'LineWidth',lineWidth)
     axis([0,1,0,1.1*max(ts.D)])
     xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
     ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-
-    figure
+    
+    n = n+1;
+    figure(n)
     subplot 211
     title('Drag Dynamics')
     plot(ts.time,[ts.a; ts.b ],'--','LineWidth',2)
