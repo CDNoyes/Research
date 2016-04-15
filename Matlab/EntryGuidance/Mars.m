@@ -11,5 +11,6 @@ mars.atmosphere = @MarsAtmosphericDensity;  % kg/m^3
 % mars.mu = 0.04283e6;                      % km^3/s^2
 mars.mu = 0.04283e15;                       % m^3/s^2
 mars.omega = 7.095e-5;                      % rad/s, angular rate of planet rotation
-
+mars.gm =  mars.mu/mars.radiusEquatorial^2; % m/s^2
+mars.g0 = 9.81;                             % earth g, used for normalizing and in isp equations
 end
