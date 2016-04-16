@@ -1,4 +1,5 @@
 *.pyc
 *.asv
 Matlab/misc
+Matlab/Images
 *.txt
