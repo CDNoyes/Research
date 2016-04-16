@@ -1,4 +1,4 @@
 *.pyc
 *.asv
 Matlab/misc
-currentGoals.txt
+*.txt
