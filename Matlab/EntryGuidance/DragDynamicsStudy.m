@@ -3,8 +3,8 @@ function DragDynamicsStudy()
 load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
 
 
-delta_CD = linspace(-.4,.4,6);
-delta_rho_per = linspace(-.3,.3,7);
+delta_CD = linspace(-.4,.4,16);
+delta_rho_per = linspace(-.3,.3,17);
 for k = 1:length(delta_CD)
     for j = 1:length(delta_rho_per)
         for i = 1:length(ref.time)

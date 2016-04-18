@@ -48,7 +48,7 @@ for i=1:length(traj.time)
     %     [sgn(i),headingErrorLimit(i)] = LateralGuidance(traj.CR(i),traj.state(i,4),csgn); %Velocity based
 end
 traj.observer = 1;
-save('EntryGuidance/HighElevationPlanner/Trajectories/tempSolution.mat'); 
+save('EntryGuidance/HighElevationPlanner/Trajectories/tempDragTrackingSolution.mat'); 
 %%
 EntryPlots(traj)
 n = length(traj.time);

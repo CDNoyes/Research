@@ -7,7 +7,10 @@
 function err = optimizeBankAngleDynamics(gains,Sigma,lim,tf)
 
 dtr = pi/180;
+gains(3) = 0;
 [T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,gains);
 % err = norm(Sigma(T)'/dtr-Saturate(S(:,1),-lim.angleMax,lim.angleMax)/dtr);
-err = trapz(T,abs(Sigma(T)'/dtr-Saturate(S(:,1),-lim.angleMax,lim.angleMax)/dtr));
+err = trapz(T,(Sigma(T)'/dtr-Saturate(S(:,1),-lim.angleMax,lim.angleMax)/dtr).^2);
+% err = sum((Sigma(T)'/dtr-Saturate(S(:,1),-lim.angleMax,lim.angleMax)/dtr).^2);
+
 end

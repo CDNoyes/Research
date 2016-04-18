@@ -57,7 +57,8 @@ for i = 1:length(t)
     [~,D_true(i)] = EntrySMO(t(i),x(i,:)',Sigma(t(i)),mars,vm,gains,ref);
 end
 
-obs = TrajectorySummary(t,x,Sigma(t),ref.target.DR,ref.target.CR);
+obs = TrajectorySummary(t,x,x(:,10),ref.target.DR,ref.target.CR);
+obs.observer = 1;
 EntryPlots(obs)
 D_true = D_true(1:length(obs.time));
 save(['EntryGuidance/HighElevationPlanner/Trajectories/ObserverTrajectory_DR',num2str(ref.target.DR),'_CR',num2str(ref.target.CR),'.mat'],'obs','Sigma');
@@ -73,26 +74,9 @@ semilogy(obs.time,abs(D_true'-obs.state(:,7)),'LineWidth',lineWidth)
 xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 ylabel('Error in Drag [true-observer] (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 title('Observer Performance')
+set(gcf,'name','Observer Performance', 'numbertitle','off','WindowStyle','docked')
+grid on
 
-figure
-plot(obs.time,obs.state(:,7),'LineWidth',lineWidth)
-hold all
-plot(obs.time,obs.D,'LineWidth',lineWidth)
-legend('Observed Drag','Modeled Drag')
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
-figure
-plot(obs.time,obs.state(:,9),'LineWidth',lineWidth)
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
-% figure
-% plot(obs.time,obs.state(:,9)-interp1(ref.time,ref.d,obs.time),'LineWidth',lineWidth)
-% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% ylabel('Disturbance Estimate with nominal Offset(m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
 
-figure
-plot(obs.time,Saturate(obs.state(:,10)*180/pi,-87,87),'LineWidth',lineWidth)
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Executed Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)

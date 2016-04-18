@@ -41,10 +41,13 @@ lim.rate = rateMax;
 lim.acceleration = accMax;
 lim.angleMax = sigmaMax;
 lim.angleMin = sigmaMin;
-KpKdH = [0.5,1.4,2.5]; %Initial Guess
+KpKdH = 10*[0.5,1.4]; %Initial Guess
 KpKdH = fminsearch(@(g)optimizeBankAngleDynamics(g,Sigma,lim,tf),KpKdH);
+if length(KpKdH) == 2
+    KpKdH(3) = 0;
+end
 [T,S] = ode45(@BankAngleDynamics,[0,tf],[Sigma(0);0],[],Sigma,lim,KpKdH);
-err = abs(Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr);
+err = (Sigma(T)'/dtr-Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr).^2;
 e = trapz(T,err);
 disp(['Norm of error between commanded and executed bank angle: ',num2str(e)])
 figure
@@ -52,7 +55,7 @@ subplot 211
 plot(T,Sigma(T)/dtr,'r--')
 hold all
 plot(T,Saturate(S(:,1),-sigmaMax,sigmaMax)/dtr)
-plot(T,S(:,2)/dtr)
+plot(T,Saturate(S(:,2),-lim.rate,lim.rate)/dtr)
 
 legend('Commanded','Executed','Bank Rate')
 subplot 212

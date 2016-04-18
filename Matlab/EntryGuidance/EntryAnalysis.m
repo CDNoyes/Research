@@ -18,16 +18,16 @@ hkm = (x(:,1)-r_eq)/1000;
 tf = findTrajLength(t,x);
 
 disp(['Trajectory Duration: ',num2str(tf), ' s'])
-disp(['Final altitude: ',num2str(hkm(end)), ' km'])
-disp(['Final FPA: ',num2str(x(end,5)/dtr), ' deg'])
-disp(['Final Downrange: ',num2str(DR(end)),' km'])
-disp(['Final Crossrange: ',num2str(CR(end)), ' km'])
+disp(['Final altitude:      ',num2str(hkm(end)), ' km'])
+disp(['Final FPA:           ',num2str(x(end,5)/dtr), ' deg'])
+disp(['Final Downrange:     ',num2str(DR(end)),' km'])
+disp(['Final Crossrange:    ',num2str(CR(end)), ' km'])
 if nargin >= 4 && ~isempty([dr,cr])
     d = norm([dr-DR(end),cr-CR(end)]);
     if d > 1
-        disp(['Total range error: ',num2str(d), ' km'])
+        disp(['Total range error:   ',num2str(d), ' km'])
     else
-        disp(['Total range error: ',num2str(d*1000), ' m'])
+        disp(['Total range error:   ',num2str(d*1000), ' m'])
     end
 else
     d = [];

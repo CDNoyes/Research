@@ -15,6 +15,8 @@ vm = VehicleModel();
 E = 0.5*x(:,4).^2 + planet.mu/planet.radiusEquatorial - planet.mu./x(:,1); %Actual energy
 En = (E-E(1))/(E(end)-E(1)); %Normalized Energy, 0 at entry and 1 at deployment
 
+
+
 [theta_t,phi_t] = FinalLatLon(x(1,2),x(1,3),x(1,6),DR_t,CR_t);
 output.target.lat = phi_t;
 output.target.lon = theta_t;
@@ -29,6 +31,11 @@ output.control = cos(sigma);
 [DR,CR] = Range(x(1,2),x(1,3),x(1,6),x(:,2),x(:,3));
 output.DR = DR;
 output.CR = CR;
+
+for i = 1:length(t)
+psi_d = DesiredHeading(x(i,2),x(i,3),theta_t,phi_t);
+output.headingError(i) = psi_d-x(i,6);
+end
 
 observer = size(x,2) >= 9;
 for i = 1:length(t)

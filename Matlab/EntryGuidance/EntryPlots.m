@@ -14,201 +14,204 @@ r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
 e = ts.energy_norm;
 
-if true
-    % Find max L, max D, max L/D indices
-    [Lmax,i_Lmax] = max(ts.L);
-    [Lgmax,i_Lgmax] = max(ts.L.*cos(x(:,5))');
-    
-    [Dmax,i_Dmax] = max(ts.D);
-    [LoDmax,i_LoDmax] = max(ts.L./ts.D);
-    
-    
-end
+% Find max Qdyn and L/D indices
+% [Lmax,i_Lmax] = max(ts.L);
+% [Lgmax,i_Lgmax] = max(ts.L.*cos(x(:,5))');
+% [Dmax,i_Dmax] = max(ts.D);
+[LoDmax,i_LoDmax] = max(ts.L./ts.D);
+[Qmax,i_Qmax] = max(ts.D./ts.C_D);
 
-lineWidth = 2;
-markerSize = 10;
-fontSize = 12;
-fontWeight = 'bold';
-fontColor = 'k';
+[lineSpecs,textSpecs,figSpecs] = PlotSpecs();
 
 % Altitude vs Velocity
 n = 1;
 figure(n)
 grid on
 box on
-set(gcf,'name','Altitude vs Velocity', 'numbertitle','off','WindowStyle','docked')
+set(gcf,'name','Altitude vs Velocity', figSpecs{:})
 ParachuteDeploymentConstraints(true);
 hold on
-plot(x(:,4),hkm, 'LineWidth',lineWidth)
-xlabel('Velocity (m/s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Altitude (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-title(['Final altitude: ',num2str(hkm(end)), ' km'],'FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+plot(x(:,4),hkm, lineSpecs{:})
+xlabel('Velocity (m/s)',textSpecs{:})
+ylabel('Altitude (km)',textSpecs{:})
+title(['Final altitude: ',num2str(hkm(end)), ' km'],textSpecs{:})
+
+% Altitude vs Range:
+n = n+1;
+figure(n)
+grid on
+box on
+set(gcf,'name','Altitude vs Range', figSpecs{:})
+% ParachuteDeploymentConstraints(true);
+hold on
+plot(ts.DR,hkm, lineSpecs{:})
+plot(ts.target.DR*ones(1,100),linspace(0,max(hkm)),'r--',lineSpecs{:})
+xlabel('DownRange (km)',textSpecs{:})
+ylabel('Altitude (km)',textSpecs{:})
+title(['Final altitude: ',num2str(hkm(end)), ' km'],textSpecs{:})
 
 %DR v CR
 n = n+1;
 figure(n)
-plot(ts.CR,ts.DR, 'LineWidth',lineWidth)
-ylabel('Downrange (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-xlabel('Crossrange (km)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-title(['Downrange: ',num2str(ts.DR(end)),' km, Crossrange: ',num2str(ts.CR(end)), ' km'],'FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+plot(ts.CR,ts.DR, lineSpecs{:})
+hold on
+plot(ts.CR(i_Qmax),ts.DR(i_Qmax),'ko',ts.CR(i_LoDmax),ts.DR(i_LoDmax),'r*' )
+ylabel('Downrange (km)',textSpecs{:})
+xlabel('Crossrange (km)',textSpecs{:})
+title(['Downrange: ',num2str(ts.DR(end)),' km, Crossrange: ',num2str(ts.CR(end)), ' km'],textSpecs{:})
+axis([min(min(ts.CR),-5),max(max(ts.CR),5),0,100*ceil(max(ts.DR)/100)]) % will be ugly for DR > 1000
 grid on
 box on
-set(gcf,'name','Downrange vs Crossrange', 'numbertitle','off','WindowStyle','docked')
+legend('Trajectory','Peak Dynamic Pressure','Max L/D','Location','best')
+set(gcf,'name','Downrange vs Crossrange', figSpecs{:})
 
 %Lat/Lon
 n = n+1;
 figure(n)
-plot(x(1,3)/dtr,x(1,2)/dtr,'ko','MarkerSize',markerSize)
+plot(x(1,3)/dtr,x(1,2)/dtr,'ko' )
 hold on
-plot(ts.target.lat/dtr,ts.target.lon/dtr,'kx','MarkerSize',markerSize)
-plot(x(:,3)/dtr,x(:,2)/dtr, 'LineWidth',lineWidth)
-xlabel('Latitude (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Longitude (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-title('Ground Track', 'FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+plot(ts.target.lat/dtr,ts.target.lon/dtr,'kx' )
+plot(x(:,3)/dtr,x(:,2)/dtr, lineSpecs{:})
+xlabel('Latitude (deg)',textSpecs{:})
+ylabel('Longitude (deg)',textSpecs{:})
+title('Ground Track', textSpecs{:})
 legend('Initial point','Target','Location','Best')
 grid on
 box on
-set(gcf,'name','Groundtrack', 'numbertitle','off','WindowStyle','docked')
+set(gcf,'name','Groundtrack', figSpecs{:})
 
 %Flight path angle
 n = n+1;
 figure(n)
 subplot 211
-plot(t,x(:,5)/dtr, 'LineWidth',lineWidth)
+plot(t,x(:,5)/dtr, lineSpecs{:})
 grid on
 axis([0,max(t),min(x(:,5)/dtr)*(1-sign(min(x(:,5)))*.1),max(x(:,5)/dtr)*(1+sign(max(x(:,5)))*.1)])
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('FPA (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Time (s)',textSpecs{:})
+ylabel('FPA (deg)',textSpecs{:})
 subplot 212
-plot(ts.energy_norm,x(:,5)/dtr, 'LineWidth',lineWidth)
+plot(ts.energy_norm,x(:,5)/dtr, lineSpecs{:})
 axis([0,1,min(x(:,5)/dtr)*(1-sign(min(x(:,5)))*.1),max(x(:,5)/dtr)*(1+sign(max(x(:,5)))*.1)])
-xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('FPA (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('FPA (deg)',textSpecs{:})
 grid on
 box on
-set(gcf,'name','FPA', 'numbertitle','off','WindowStyle','docked')
+set(gcf,'name','FPA', figSpecs{:})
 
 %Heading angle
 n = n+1;
 figure(n)
 subplot 211
-plot(t,x(:,6)/dtr, 'LineWidth',lineWidth)
+plot(t,x(:,6)/dtr, lineSpecs{:})
 grid on
 axis([0,max(t),min(x(:,6)/dtr)*(1-sign(min(x(:,6)))*.1),max(x(:,6)/dtr)*(1+sign(max(x(:,6)))*.1)])
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Heading (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Time (s)',textSpecs{:})
+ylabel('Heading (deg)',textSpecs{:})
 subplot 212
-plot(ts.energy_norm,x(:,6)/dtr, 'LineWidth',lineWidth)
+plot(ts.energy_norm,x(:,6)/dtr, lineSpecs{:})
 axis([0,1,min(x(:,6)/dtr)*(1-sign(min(x(:,6)))*.1),max(x(:,6)/dtr)*(1+sign(max(x(:,6)))*.1)])
-xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Heading (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('Heading (deg)',textSpecs{:})
 grid on
 box on
-set(gcf,'name','Heading', 'numbertitle','off','WindowStyle','docked')
+set(gcf,'name','Heading', figSpecs{:})
 
 %CONTROL
 n = n+1;
 figure(n)
 subplot 211
-plot(t,Saturate(sig/dtr,-90,90), 'LineWidth',lineWidth)
+plot(t,Saturate(sig/dtr,-90,90), lineSpecs{:})
 grid on
 axis([0,max(t),-95,95])
-xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Time (s)',textSpecs{:})
+ylabel('Bank Angle (deg)',textSpecs{:})
 subplot 212
-plot(ts.energy_norm,Saturate(sig/dtr,-90,90), 'LineWidth',lineWidth)
+plot(ts.energy_norm,Saturate(sig/dtr,-90,90), lineSpecs{:})
 axis([0,1,-95,95])
-xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-ylabel('Bank Angle (deg)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('Bank Angle (deg)',textSpecs{:})
 grid on
 box on
-set(gcf,'name','Bank Profile', 'numbertitle','off','WindowStyle','docked')
+set(gcf,'name','Bank Profile', figSpecs{:})
 
-
+% MACH
+n = n+1;
+figure(n)
+subplot 211
+plot(t,ts.M, lineSpecs{:})
+grid on
+axis([0,max(t),0,35])
+xlabel('Time (s)',textSpecs{:})
+ylabel('Mach Number (-)',textSpecs{:})
+subplot 212
+plot(ts.energy_norm,ts.M, lineSpecs{:})
+axis([0,1,0,35])
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('Mach Number (-)',textSpecs{:})
+grid on
+box on
+set(gcf,'name','Mach Profile', figSpecs{:})
 
 if isfield(ts,'observer') && ts.observer
     n = n+1;
     figure(n)
-    plot(ts.energy_norm,ts.state(:,7),'LineWidth',lineWidth)
+    plot(e,ts.state(:,7),lineSpecs{:})
     hold all
-    plot(ts.energy_norm,ts.D,'LineWidth',lineWidth)
-    plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
+    plot(e,ts.D,lineSpecs{:})
+    plot(e,ts.D'./cos(x(:,5)), lineSpecs{:})
     
     legend('Observed Drag','Modeled Drag', 'Modeled Drag/cos(\gamma)')
-    xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-    ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-    set(gcf,'name','Drag Profile', 'numbertitle','off','WindowStyle','docked')
+    xlabel('Normalized Energy (-)',textSpecs{:})
+    ylabel('Drag (m/s^2)',textSpecs{:})
+    set(gcf,'name','Drag Profile', figSpecs{:})
     grid on
     
     n = n+1;
     figure(n)
-    plot(ts.energy_norm,ts.state(:,9),'LineWidth',lineWidth)
-    xlabel('Normalized Energy (-)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-    ylabel('Disturbance Estimate (m/s^4)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    plot(ts.energy_norm,ts.state(:,9),lineSpecs{:})
+    xlabel('Normalized Energy (-)',textSpecs{:})
+    ylabel('Disturbance Estimate (m/s^4)',textSpecs{:})
     grid on
-    set(gcf,'name','Disturbance Estimate', 'numbertitle','off','WindowStyle','docked')
+    set(gcf,'name','Disturbance Estimate', figSpecs{:})
 end
-
-%Experimental - Reference
-% n = n+1;
-% figure(n)
-% subplot 211
-% plot(ts.time,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-% grid on
-% title('Drag divided by cos(fpa)')
-% axis([0,max(t),-10,90])
-% xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% ylabel(' (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% subplot 212
-% plot(ts.energy_norm,ts.D'./cos(x(:,5)), 'LineWidth',lineWidth)
-% axis([0,1,-10,90])
-% xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% ylabel('m/s^2','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-% grid on
-% box on
-% set(gcf,'name','Reference Profile', 'numbertitle','off','WindowStyle','docked')
 
 
 % Various experimental crossrange plans
 if true
+%     n = n+1;
+%     figure(n)
+%     plot(ts.L./ts.D,abs(ts.CR),lineSpecs{:})
+%     hold on
+%     plot(LoDmax, abs(ts.CR(i_LoDmax)),'ko',lineSpecs{:} )
+%     set(gcf,'name','Crossrange vs L/D', figSpecs{:})
+%     legend(' ','Max L/D')
+    
+%     n = n+1;
+%     figure(n)
+%     plot(ts.D, abs(ts.CR),lineSpecs{:})
+%     set(gcf,'name','Crossrange vs Drag', figSpecs{:})
+%     grid on
+    
     n = n+1;
     figure(n)
-    plot(ts.L./ts.D,abs(ts.CR),'LineWidth',lineWidth)
+    plot(ts.L'.*cos(x(:,5)), abs(ts.CR),lineSpecs{:})
     hold on
-    plot(LoDmax, abs(ts.CR(i_LoDmax)),'ko','LineWidth',lineWidth,'MarkerSize',markerSize)    
-    set(gcf,'name','Crossrange vs L/D', 'numbertitle','off','WindowStyle','docked')
-    legend(' ','Max L/D')
-    
-    n = n+1;
-    figure(n)
-    plot(ts.D, abs(ts.CR),'LineWidth',lineWidth)
-    set(gcf,'name','Crossrange vs Drag', 'numbertitle','off','WindowStyle','docked')
+    plot(ts.L(i_Qmax)*cos(x(i_Qmax,5)), abs(ts.CR(i_Qmax)),'ko',ts.L(i_LoDmax),abs(ts.CR(i_LoDmax)),'r*', lineSpecs{:} )
+%     plot(Lmax, abs(ts.CR(i_Lmax)),'r*',lineSpecs{:} )
+    set(gcf,'name','Crossrange vs Lcos\gamma', figSpecs{:})
+    legend(' ','Max Dyn Press', 'Max L/D')
     grid on
     
-    n = n+1;
-    figure(n)
-    plot(ts.L'.*cos(x(:,5)), abs(ts.CR),'LineWidth',lineWidth)
-    hold on
-    plot(Lgmax, abs(ts.CR(i_Lgmax)),'ko','LineWidth',lineWidth,'MarkerSize',markerSize)    
-    set(gcf,'name','Crossrange vs Lcos\gamma', 'numbertitle','off','WindowStyle','docked')
-    legend(' ','Max Lcos\gamma')
-    grid on
-    
-    n = n+1;
-    figure(n)
-    plot(ts.state(:,4), abs(ts.CR),'LineWidth',lineWidth)
-    set(gcf,'name','Crossrange vs Velocity', 'numbertitle','off','WindowStyle','docked')
-    grid on
 end
 
 % Drag dynamics, for analysis
 if false
     n = n+1;
     figure(n)
-    plot(ts.energy_norm,ts.D, 'LineWidth',lineWidth)
+    plot(ts.energy_norm,ts.D, lineSpecs{:})
     axis([0,1,0,1.1*max(ts.D)])
-    xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
-    ylabel('Drag (m/s^2)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    xlabel('Normalized Energy',textSpecs{:})
+    ylabel('Drag (m/s^2)',textSpecs{:})
     
     n = n+1;
     figure(n)
@@ -219,13 +222,13 @@ if false
     plot(ts.time,ts.a + ts.b .* ts.control,'LineWidth',2)
     legend('a','b','a+bu')
     axis([0,max(t),-2,1])
-    xlabel('Time (s)','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    xlabel('Time (s)',textSpecs{:})
     
     subplot 212
     plot(ts.energy_norm,[ts.a; ts.b],'LineWidth',2)
     hold all
     plot(ts.energy_norm,ts.a + ts.b .* ts.control,'LineWidth',2)
     axis([0,1,-2,1])
-    xlabel('Normalized Energy','FontSize',fontSize,'FontWeight',fontWeight,'Color',fontColor)
+    xlabel('Normalized Energy',textSpecs{:})
     
 end
