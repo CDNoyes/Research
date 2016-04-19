@@ -43,12 +43,12 @@ param.DENSE = DENSE;
 param.e0 = e0;
 param.ef = ef;
 param.tol = tol;
-param.sigmaf = 25*pi/180;
+param.sigmaf = 15*pi/180;
 param.phif = ref.target.lat;
 param.thetaf = ref.target.lon;
 param.nReversal = 0;
 param.PCInit = 0;
-param.CONSTANTBANKSTOP = 1200; % Stop using constant bank at this velocity
+param.CONSTANTBANKSTOP = 2600; % Stop using constant bank at this velocity
 param.FDStep = .000175; % Finite Difference Step Size in Radians
 
 % Initialization
@@ -268,7 +268,9 @@ while iter < maxIter && abs(znew*dznew) > param.tol
     [sigma0,znew,dznew] = Correct(xc,sigma0,param);
     iter = iter + 1;
 end
-
+if iter == maxIter
+    disp('Max iter reached in sigma0 computation.')
+end
 end
 
 function sigma = getBankAngle(e,v,sigma0,param)
@@ -300,7 +302,7 @@ limit = limf*(state(4)<vf && state(4)>480) + (CR0 + state(4)*M).*(state(4)>=vf);
 psi_d = DesiredHeading(state(2),state(3),param.thetaf,param.phif);
 e = psi_d-state(6);
 
-if state(4) < 460 
+if state(4) < 420 
     snew = -sCR;
 else
     

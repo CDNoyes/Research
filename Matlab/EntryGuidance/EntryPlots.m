@@ -152,6 +152,23 @@ grid on
 box on
 set(gcf,'name','Mach Profile', figSpecs{:})
 
+n = n+1;
+figure(n)
+subplot 211
+plot(t,x(:,4), lineSpecs{:})
+grid on
+axis([0,max(t),0,6000])
+xlabel('Time (s)',textSpecs{:})
+ylabel('Velocity (m/s)',textSpecs{:})
+subplot 212
+plot(e,x(:,4), lineSpecs{:})
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('Velocity (m/s)',textSpecs{:})
+grid on
+box on
+set(gcf,'name','Velocity Profile', figSpecs{:})
+
+
 if isfield(ts,'observer') && ts.observer
     n = n+1;
     figure(n)
