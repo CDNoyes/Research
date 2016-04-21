@@ -37,7 +37,7 @@ end
 
 function tf = findTrajLength(t,x)
 
-d = diff(x(:,1));
+d = diff(x(:,4));
 idx = find(d==0,1);
 if isempty(idx)
     tf = t(end);

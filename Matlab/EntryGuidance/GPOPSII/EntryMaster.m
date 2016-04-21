@@ -1,5 +1,5 @@
 %% GPOPSII, 3DOF Optimal Drag Tracking With Reversals
-clear; clc;
+clear; clc; close all;
 
 % Reference Trajectory
 load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
@@ -17,6 +17,7 @@ auxdata.vehicle = vm;
 auxdata.dimension.state = 7;
 auxdata.dimension.control = 1;
 auxdata.dimension.parameter = 0;
+auxdata.delta.CD = -.14;
 
 dtr = pi/180;
 
@@ -41,12 +42,14 @@ ub = [x0(1)+100
     0
     0
     x0(4)+500
-    0 %0 degrees
+    5*dtr %0 degrees
     pi/2
     pi/2]';
 tol = 0*dtr;
-xfl = [lb(1), lb(2), lb(3), lb(4), lb(5), lb(6), lb(7)];
-xfu = [ub(1), ub(2), ub(3), 485, ub(5), ub(6), ub(7)];
+% xfl = [lb(1), lb(2), lb(3), lb(4), lb(5), lb(6), lb(7)];
+xfl = [lb(1), ref.target.lon, ref.target.lat, lb(4), lb(5), lb(6), lb(7)];
+% xfu = [ub(1), ub(2), ub(3), 475, ub(5), ub(6), ub(7)];
+xfu = [ub(1), ref.target.lon, ref.target.lat, 475, ub(5), ub(6), ub(7)];
 bounds.phase.initialstate.lower =[x0, lb(7)];
 bounds.phase.initialstate.upper = [x0, ub(7)];
 bounds.phase.state.lower = [lb];
@@ -77,6 +80,7 @@ setup.mesh.phase = meshphase;
 setup.bounds = bounds;
 setup.guess = guess;
 setup.nlp.solver = 'snopt';
+% setup.nlp.solver = 'ipopt';
 % setup.nlp.options.ipopt.linear_solver = 'ma57';
 %setup.nlp.options.ipopt.linear_solver = 'mumps';
 setup.derivatives.supplier = 'sparseFD';
@@ -84,7 +88,7 @@ setup.derivatives.derivativelevel = 'first';
 setup.scales.method = 'automatic-bounds';
 setup.method = 'RPMintegration';
 setup.mesh.method = 'hp1';
-setup.mesh.tolerance = 1e-2; % default 1e-3
+setup.mesh.tolerance = 1e-4; % default 1e-3
 setup.mesh.colpointsmin = 3;
 setup.mesh.colpointsmax = 10;
 setup.mesh.maxiterations = 20;
@@ -92,4 +96,9 @@ setup.mesh.maxiterations = 20;
 sol = gpops2(setup);
 
 %% Plot the solution
+Sol = sol.result.solution.phase;
+traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),ref.target.DR,ref.target.CR);
+EntryPlots(traj)
 
+figure
+plot(Sol.time, Sol.control/dtr)

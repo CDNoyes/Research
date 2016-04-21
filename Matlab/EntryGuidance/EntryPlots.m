@@ -168,6 +168,23 @@ grid on
 box on
 set(gcf,'name','Velocity Profile', figSpecs{:})
 
+gload = sqrt(ts.L.^2+ts.D.^2)/9.81;
+n = n+1;
+figure(n)
+subplot 211
+plot(t,gload, lineSpecs{:})
+grid on
+% axis([0,max(t),0,6000])
+xlabel('Time (s)',textSpecs{:})
+ylabel('Load (g)',textSpecs{:})
+subplot 212
+plot(e,gload, lineSpecs{:})
+xlabel('Normalized Energy',textSpecs{:})
+ylabel('Load (g)',textSpecs{:})
+grid on
+box on
+set(gcf,'name','g-load profile', figSpecs{:})
+
 
 if isfield(ts,'observer') && ts.observer
     n = n+1;

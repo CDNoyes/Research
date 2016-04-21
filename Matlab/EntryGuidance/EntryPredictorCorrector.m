@@ -1,10 +1,15 @@
 function EntryPredictorCorrector()
+close all; clc;
 tic;
+
+dtr = pi/180;
+
+
 % Reference Data:
 load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
 
 % Flags
-CONSTANTBANK = 1;
+CONSTANTBANK = 1; % Use a constant bank or the linear (in energy) parametrization
 SCALE = 0; % Perform all calculations and integrations in dimensionless units?
 DENSE = 1; % Whether to keep data at every guidance cycle or every integration step taken
 
@@ -14,10 +19,9 @@ mars = Mars();
 vm = VehicleModel();
 sf = getScaleFactors(mars);
 
-% Compute the initial range to go:
-S0 = ref.target.DR*1e3/sf.radius;
 
 % Initial States:
+S0 = ref.target.DR*1e3/sf.radius; % Compute the initial range to go:
 x0 = [ref.state(1,1:6)';S0];
 e0 = eFromState(x0(1),x0(4),sf);
 
@@ -27,10 +31,10 @@ e0 = eFromState(x0(1),x0(4),sf);
 ef = eFromState(10e3+sf.radius,400,sf);
 
 % Guidance System Specs:
-f = 1; %Hz
+f = .2; % Hz
 dt = 1/f; % Guidance cycle length, seconds
 tmax = 350; % while loop max iteration condition
-tol = 1e-6; % Newton iteration tolerance in the predictor-corrector process
+tol = 1e-5; % Newton iteration tolerance in the predictor-corrector process
 
 % Create a data structure for convenience
 param.dt = dt;
@@ -43,19 +47,36 @@ param.DENSE = DENSE;
 param.e0 = e0;
 param.ef = ef;
 param.tol = tol;
-param.sigmaf = 15*pi/180;
+param.sigmaf = 20*dtr;
 param.phif = ref.target.lat;
 param.thetaf = ref.target.lon;
 param.nReversal = 0;
 param.PCInit = 0;
-param.CONSTANTBANKSTOP = 2600; % Stop using constant bank at this velocity
+param.CONSTANTBANKSTOP = 2500; % Stop using constant bank at this velocity
 param.FDStep = .000175; % Finite Difference Step Size in Radians
 
+% Bank Angle Dynamics, Limits, Gains, etc
+param.ENFORCEBANK = 0;
+sigmaMin = 0*dtr;
+sigmaMax = 90*dtr;
+K = 10*[0.5643, 1.2934,0]; %Bank Angle dynamics gains
+param.bankGains = K;
+rateMax = 20*dtr;
+accMax = 10*dtr;
+param.bankLimits.rate = rateMax;
+param.bankLimits.acceleration = accMax;
+param.bankLimits.angleMax = sigmaMax;
+param.bankLimits.angleMin = sigmaMin;
+
 % Initialization
-x = x0';
 t = 0;
 sigma0 = -20*pi/180;
 bank = sigma0;
+if param.ENFORCEBANK
+    x = [x0',bank,0];
+else
+    x = x0';
+end
 L = ref.L(1);
 D = ref.D(1);
 M = ref.M(1);
@@ -110,7 +131,7 @@ while ~terminate && tCurrent < tmax
     L = [L;Lnew(idx)'];
     D = [D;Dnew(idx)'];
     M = [M;Mnew(idx)'];
-    bank = [bank;banknew(idx)'];
+    bank = [bank;banknew(idx)']; % Bank angle command by the PC and Lateral guidance
     banksign = [banksign;sCurrent*ones(length(tnew(idx)),1)];
     limit = [limit;lim*ones(length(tnew(idx)),1)];
     headingError = [headingError;headError*ones(length(tnew(idx)),1)];
@@ -136,7 +157,10 @@ box on
 set(gcf,'name','Crossrange Deadband vs Velocity', figSpecs{:})
 legend('Trajectory Heading Error','Commanded Sign','Bank Angle (rad)','CR','CR Deadband','CR Deadband')
 
-
+if param.ENFORCEBANK
+figure
+plot(traj.time,bank/dtr,traj.time,Saturate(traj.state(:,8),-sigmaMax,sigmaMax)/dtr)
+end
 
 end
 
@@ -144,7 +168,7 @@ end
 function z = Predict(xc,sigmaFun,param)
 
 e = @(x)  eFromState(x(:,1),x(:,4),param.sf);
-[~,xn] = ode45(@(t,x) dynamics(t,x,sigmaFun(e(x'),x(4)),param), [0,350],xc,[]);
+[~,xn] = ode45(@(t,x) dynamics(t,x,sigmaFun(e(x.'),x(4)),param), [0,350],xc,[]);
 
 z = xn(end,7);
 
@@ -162,9 +186,9 @@ z1 = Predict(xc,@(e,v) getBankAngle(e,v,sigma0,param),param);
 f1 = 0.5*z1^2; % Current cost
 while n < nMax
     % Compute sensitivity to sigma0
-    z2 = Predict(xc,@(e,v) getBankAngle(e,v,sigma0+deltaSigma,param),param);
-    dz = (z2-z1)/deltaSigma;
-    
+%     dz = ComplexDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0);
+    dz = ForwardDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0,deltaSigma);
+
     sigma = Saturate(sigma0 - (0.5^n)*z1/dz, -pi/2,pi/2); % Eqn 24 to update sigma
     
     znew = Predict(xc,@(e,v) getBankAngle(e,v,sigma,param),param);
@@ -196,7 +220,6 @@ function [tn,xn,terminate,Sigma,L,D,M] = Step(xc, sigma, param)
 e = @(x)  eFromState(x(:,1),x(:,4),param.sf);
 [tn,xn] = ode45(@(t,x) dynamics(t,x,sigma(e(x'),x(4)),param), [0,param.dt],xc,[]);
 
-% Sigma = sigma(e(xn));
 
 for i = 1:length(tn)
     Sigma(i) = sigma(e(xn(i,:)),xn(i,4));
@@ -209,7 +232,7 @@ end
 
 function [dX,L,D,M,done] = dynamics(t,x,sigma,param)
 
-% e = eFromState(x(1),x(4),param.sf);
+% These stopping conditions should be in param
 hmin = 6; %km
 vmax = 480; %m/s
 if (x(4) < vmax && x(7) <= 0) || (x(1)-param.planet.radiusEquatorial)/1000 < hmin %e > param.ef
@@ -221,8 +244,17 @@ if (x(4) < vmax && x(7) <= 0) || (x(1)-param.planet.radiusEquatorial)/1000 < hmi
 else
     done = false;
     [g,L,D,~,M,a,rho] = EntryForces(x,param.planet,param.vehicle);
-    dx = EntryDynamics(x,sigma,g,L,D);
-    dX = [dx;-x(4)*cos(x(5))/x(1)]; % Augment the state with the range computation
+    if param.ENFORCEBANK
+        sigma_ex = Saturate(x(8),-param.bankLimits.angleMax,param.bankLimits.angleMax);
+        dx = EntryDynamics(x,sigma_ex,g,L,D);
+        du = BankAngleDynamics(t,x(8:9),sigma,param.bankLimits,param.bankGains);
+
+    else
+        dx = EntryDynamics(x,sigma,g,L,D);
+        du = [];
+    end
+
+    dX = [dx;-x(4)*cos(x(5))/x(1);du]; % Augment the state with the range computation and bank dynamics
 end
 
 
@@ -291,18 +323,22 @@ end
 function [snew,limit,e] = DeadbandLateralGuidance(state,sBank,sCR,param)
 
 % Velocity-varying heading corridor
-lim0 = 0.08;
-limf = 0.07;
+% lim0 = 0.08;
+% limf = 0.07;
+% v0 = 5505;
+% vf = 2500;
+lim0 = 0.1;
+limf = 0.02;
 v0 = 5505;
-vf = 2500;
+vf = 500;
 
 M = (lim0-limf)/(v0-vf);
 CR0 = lim0-M*v0;
-limit = limf*(state(4)<vf && state(4)>480) + (CR0 + state(4)*M).*(state(4)>=vf);
+limit = limf*(state(4)<vf && state(4)>0) + (CR0 + state(4)*M).*(state(4)>=vf);
 psi_d = DesiredHeading(state(2),state(3),param.thetaf,param.phif);
 e = psi_d-state(6);
 
-if state(4) < 420 
+if state(4) < 180 
     snew = -sCR;
 else
     
