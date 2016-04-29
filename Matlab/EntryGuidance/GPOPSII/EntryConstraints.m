@@ -1,6 +1,5 @@
 function output = EntryConstraints( input )
 
-ref     = input.auxdata.ref;
 S       = input.auxdata.vehicle.area;
 m       = input.auxdata.vehicle.mass;
 mu      = input.auxdata.planet.mu;
@@ -18,8 +17,6 @@ gamma = x(:,5);
 psi = x(:,6);
 Sigma = x(:,7);
 
-% E = 0.5*v.^2 + mu/rp - mu./r;
-% drag_ref = interp1(ref.energy,ref.D,E,'spline');
 
 g = mu./(r.^2);
 h = r-rp;
@@ -39,7 +36,7 @@ dgamma = lift.*cos(Sigma)./v - (g./v - v./r).*cos(gamma);
 dpsi = lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
 
 output.dynamics = [dr dtheta dphi dv dgamma dpsi dSigma];
-output.integrand = zeros(size(r)); %(drag-drag_ref).^2;
+output.integrand = zeros(size(r));
 
 end
 

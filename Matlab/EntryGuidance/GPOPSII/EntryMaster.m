@@ -1,17 +1,29 @@
-%% GPOPSII, 3DOF Optimal Drag Tracking With Reversals
+%% GPOPSII, 3DOF Optimal Solution
 clear; clc; close all;
 
+dtr = pi/180;
+
 % Reference Trajectory
-load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
+% load('EntryGuidance/HighElevationPlanner/Trajectories/ReferenceTrajectory_DR780_CR0.mat');
+
+
+
 
 % System Models:
 mars = Mars();
 vm = VehicleModel();
 
 % Initial states:
-x0 = ref.state(1,1:6);
+%[radius long lat velocity fpa heading]
+x0 = [3540e3; -90.07*dtr; -43.90*dtr; 5505; -14.15*dtr; 4.99*dtr]';
 
-auxdata.ref = ref;
+% Target info:
+target.DR = 780;
+target.CR = 0;
+[target.lon,target.lat] = FinalLatLon(x0(2),x0(3),x0(6),target.DR,target.CR);
+
+% auxdata.ref = ref;
+auxdata.target = target;
 auxdata.planet = mars;
 auxdata.vehicle = vm;
 auxdata.dimension.state = 7;
@@ -19,7 +31,6 @@ auxdata.dimension.control = 1;
 auxdata.dimension.parameter = 0;
 auxdata.delta.CD = -.14;
 
-dtr = pi/180;
 
 % Bounds
 t0 = 0;
@@ -42,14 +53,12 @@ ub = [x0(1)+100
     0
     0
     x0(4)+500
-    5*dtr %0 degrees
+    5*dtr %5 degrees
     pi/2
     pi/2]';
 tol = 0*dtr;
-% xfl = [lb(1), lb(2), lb(3), lb(4), lb(5), lb(6), lb(7)];
-xfl = [lb(1), ref.target.lon, ref.target.lat, lb(4), lb(5), lb(6), lb(7)];
-% xfu = [ub(1), ub(2), ub(3), 475, ub(5), ub(6), ub(7)];
-xfu = [ub(1), ref.target.lon, ref.target.lat, 475, ub(5), ub(6), ub(7)];
+xfl = [lb(1), target.lon, target.lat, lb(4), lb(5), lb(6), lb(7)];
+xfu = [ub(1), target.lon, target.lat, 475, ub(5), ub(6), ub(7)];
 bounds.phase.initialstate.lower =[x0, lb(7)];
 bounds.phase.initialstate.upper = [x0, ub(7)];
 bounds.phase.state.lower = [lb];
@@ -94,10 +103,10 @@ setup.mesh.colpointsmax = 10;
 setup.mesh.maxiterations = 20;
 
 sol = gpops2(setup);
+Sol = sol.result.solution.phase;
 
 %% Plot the solution
-Sol = sol.result.solution.phase;
-traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),ref.target.DR,ref.target.CR);
+traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),target.DR,target.CR);
 EntryPlots(traj)
 
 figure
