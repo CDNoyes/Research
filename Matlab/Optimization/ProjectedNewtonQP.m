@@ -41,7 +41,7 @@ while iter < iterMax
     
     gf = grad(f) + hess(f,f)*x(f) + hess(f,c)*x(c);
     if norm(gf) < tol
-        disp(['ProjectedNewton QP terminated successfully in ',num2str(iter),' iterations.'])
+%         disp(['ProjectedNewton QP terminated successfully in ',num2str(iter),' iterations.'])
         break
     end
     dx = zeros(n,1);
@@ -53,7 +53,7 @@ while iter < iterMax
     iter = iter+1;
 end
 if iter == iterMax
-    disp('Max number of iterations reached.')
+    disp(['Max number of iterations (',num2str(iterMax),') reached.'])
 end
 fOpt = fQuad(hess,grad,x);
 
