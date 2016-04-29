@@ -1,4 +1,4 @@
-function [g,L,D,hs,M,a,rho,rho_dot,temp,C_D,C_D_dot] = EntryForces(x,planetModel,vehicleModel,ScaleFactor)
+function [g,L,D,hs,M,a,rho,rho_dot,temp,C_D,C_D_dot,C_L,dadr,dC_DdM,dC_LdM] = EntryForces(x,planetModel,vehicleModel,ScaleFactor)
 
 if nargin < 4 || isempty(ScaleFactor)
     ScaleFactor.radius = 1;
@@ -20,9 +20,9 @@ h_dot = V*sin(gamma);
 g = mu/r^2/ScaleFactor.velocity^2/ScaleFactor.radius;      % gravity, m/s^2
 
 h = r*ScaleFactor.radius-r_eq;                             % Altitude
-[rho,a,hs,~,a_dot,rho_dot] = MarsAtmosphericDensity(h,h_dot);                       % Density and Speed of Sound
+[rho,a,hs,dadr,a_dot,rho_dot] = MarsAtmosphericDensity(h,h_dot*ScaleFactor.velocity);                       % Density and Speed of Sound
 M = V*ScaleFactor.velocity/a;                              % Mach Number
-[C_D,C_L,dC_DdM] = AerodynamicCoefficients(M); 
+[C_D,C_L,dC_DdM,dC_LdM] = AerodynamicCoefficients(M); 
 temp = .5*rho*V^2*S/m*ScaleFactor.radius;
 L = temp*C_L;
 D = temp*C_D;

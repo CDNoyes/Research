@@ -36,6 +36,18 @@ xlabel('Velocity (m/s)',textSpecs{:})
 ylabel('Altitude (km)',textSpecs{:})
 title(['Final altitude: ',num2str(hkm(end)), ' km'],textSpecs{:})
 
+% Range vs Velocity
+n=n+1;
+figure(n)
+grid on
+box on
+set(gcf,'name','Range To Go vs Velocity', figSpecs{:})
+hold on
+plot(x(:,4),ts.target.DR-ts.DR, lineSpecs{:})
+xlabel('Velocity (m/s)',textSpecs{:})
+ylabel('Range To Go (km)',textSpecs{:})
+title(['Final altitude: ',num2str(hkm(end)), ' km'],textSpecs{:})
+
 % Altitude vs Range:
 n = n+1;
 figure(n)

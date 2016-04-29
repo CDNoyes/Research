@@ -17,47 +17,37 @@ DENSE = 1; % Whether to keep data at every guidance cycle or every integration s
 % System Models:
 mars = Mars();
 vm = VehicleModel();
-sf = getScaleFactors(mars);
-
-
-% Initial States:
-S0 = ref.target.DR*1e3/sf.radius; % Compute the initial range to go:
-x0 = [ref.state(1,1:6)';S0];
-e0 = eFromState(x0(1),x0(4),sf);
-
-% Final energy:
-% xf = ref.state(end,1:6)';
-% ef = eFromState(xf(1),xf(4),sf);
-ef = eFromState(10e3+sf.radius,400,sf);
+sf = getScaleFactors(mars,SCALE);
 
 % Guidance System Specs:
-f = .2; % Hz
-dt = 1/f; % Guidance cycle length, seconds
-tmax = 350; % while loop max iteration condition
+f = 1; % Hz
+dt = 1/f./sf.time; % Guidance cycle length, seconds
+tmax = 350/sf.time; % while loop max iteration condition
 tol = 1e-5; % Newton iteration tolerance in the predictor-corrector process
 
 % Create a data structure for convenience
 param.dt = dt;
+
 param.planet = mars;
 param.vehicle = vm;
 param.sf = sf;
+
 param.CONSTANTBANK = CONSTANTBANK;
 param.SCALE = SCALE;
 param.DENSE = DENSE;
-param.e0 = e0;
-param.ef = ef;
+
 param.tol = tol;
 param.sigmaf = 20*dtr;
 param.phif = ref.target.lat;
 param.thetaf = ref.target.lon;
 param.nReversal = 0;
 param.PCInit = 0;
-param.CONSTANTBANKSTOP = 2500; % Stop using constant bank at this velocity
-param.FDStep = .000175; % Finite Difference Step Size in Radians
+param.CONSTANTBANKSTOP = 2500/sf.velocity; % Stop using constant bank at this velocity
+param.FDStep = .000000175; % Finite Difference Step Size in Radians
 
 % Bank Angle Dynamics, Limits, Gains, etc
 param.ENFORCEBANK = 0;
-sigmaMin = 0*dtr;
+sigmaMin = 10*dtr;
 sigmaMax = 90*dtr;
 K = 10*[0.5643, 1.2934,0]; %Bank Angle dynamics gains
 param.bankGains = K;
@@ -68,6 +58,16 @@ param.bankLimits.acceleration = accMax;
 param.bankLimits.angleMax = sigmaMax;
 param.bankLimits.angleMin = sigmaMin;
 
+% Initial States:
+S0 = ref.target.DR*1e3/mars.radiusEquatorial; % Compute the initial range to go:
+x0 = Scale([ref.state(1,1:6)';S0],param);
+
+% Initial and Final Energy:
+e0 = eFromState(x0(1),x0(4));
+ef = eFromState((10e3+mars.radiusEquatorial)/sf.radius,400/sf.velocity); %Approximate final state, used in the linear parametrization of bank angle
+param.e0 = e0;
+param.ef = ef;
+
 % Initialization
 t = 0;
 sigma0 = -20*pi/180;
@@ -77,14 +77,14 @@ if param.ENFORCEBANK
 else
     x = x0';
 end
-L = ref.L(1);
-D = ref.D(1);
+L = ref.L(1)*sf.radius/sf.velocity^2;
+D = ref.D(1)*sf.radius/sf.velocity^2;
 M = ref.M(1);
 terminate = 0;
 tCurrent = 0;
 banksign = sign(sigma0); %Current sign of the bank angle
 limit = 0.1; % Heading angle error limit
-headingError = 0; 
+headingError = 0;
 
 % The main loop occurs in the time domain so that the guidance cycle can be
 % enforced simply, while the prediction/correction steps happen in the
@@ -95,10 +95,10 @@ while ~terminate && tCurrent < tmax
     
     [~,CR] = Range(x(1,2),x(1,3),x(1,6),x(end,2),x(end,3));
     [sCurrent,lim,headError] = DeadbandLateralGuidance(x(end,:),banksign(end),sign(CR),param);
-    if sCurrent ~= banksign(end) 
+    if sCurrent ~= banksign(end)
         param.nReversal = param.nReversal+1;
     end
-    if ~any(sqrt(L.^2 + D.^2) > 0.15*mars.g0)                             % Pre-entry phase
+    if ~any(sqrt((L/sf.radius*sf.velocity^2).^2 + (D/sf.radius*sf.velocity^2).^2) > 0.15*mars.g0)                             % Pre-entry phase
         sigma = @(E,V) sigma0*ones(size(E));
         sCurrent = sign(sigma0);
         
@@ -136,7 +136,17 @@ while ~terminate && tCurrent < tmax
     limit = [limit;lim*ones(length(tnew(idx)),1)];
     headingError = [headingError;headError*ones(length(tnew(idx)),1)];
     
-    tCurrent = t(end)
+    tCurrent = t(end);
+    if SCALE || ~mod(tCurrent*param.sf.time,5)
+        disp(['Current sim time: ',num2str(tCurrent*param.sf.time),' s'])
+    end
+end
+%Unscale if needed:
+if SCALE
+    t = t*param.sf.time;
+    x = Unscale(x,param);
+    L = L/sf.radius*sf.velocity^2;
+    D = D/sf.radius*sf.velocity^2;
 end
 t_elapsed = toc;
 
@@ -158,8 +168,8 @@ set(gcf,'name','Crossrange Deadband vs Velocity', figSpecs{:})
 legend('Trajectory Heading Error','Commanded Sign','Bank Angle (rad)','CR','CR Deadband','CR Deadband')
 
 if param.ENFORCEBANK
-figure
-plot(traj.time,bank/dtr,traj.time,Saturate(traj.state(:,8),-sigmaMax,sigmaMax)/dtr)
+    figure
+    plot(traj.time,bank/dtr,traj.time,Saturate(traj.state(:,8),-sigmaMax,sigmaMax)/dtr)
 end
 
 end
@@ -167,7 +177,7 @@ end
 %% Functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function z = Predict(xc,sigmaFun,param)
 
-e = @(x)  eFromState(x(:,1),x(:,4),param.sf);
+e = @(x)  eFromState(x(:,1),x(:,4));
 [~,xn] = ode45(@(t,x) dynamics(t,x,sigmaFun(e(x.'),x(4)),param), [0,350],xc,[]);
 
 z = xn(end,7);
@@ -178,17 +188,18 @@ function [sigma,znew,dznew] = Correct(xc,sigma0,param)
 
 %Algorithm Specs:
 deltaSigma = param.FDStep; % Finite difference stepsize
-nMax = 5;
+nMax = 4;
 n = 0;
 
 % Repeatedly call predict while changing "i" to compute the new bank angle
 z1 = Predict(xc,@(e,v) getBankAngle(e,v,sigma0,param),param);
 f1 = 0.5*z1^2; % Current cost
+% Compute sensitivity to sigma0
+% dz = ComplexDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0);
+dz = ForwardDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0,deltaSigma);
 while n < nMax
-    % Compute sensitivity to sigma0
-%     dz = ComplexDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0);
-    dz = ForwardDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0,deltaSigma);
-
+    
+    
     sigma = Saturate(sigma0 - (0.5^n)*z1/dz, -pi/2,pi/2); % Eqn 24 to update sigma
     
     znew = Predict(xc,@(e,v) getBankAngle(e,v,sigma,param),param);
@@ -198,6 +209,9 @@ while n < nMax
         break;
     else
         n = n+1;
+%         if n == nMax
+%             disp('Max minor iterations reached.')
+%         end
     end
     
 end
@@ -217,9 +231,8 @@ function [tn,xn,terminate,Sigma,L,D,M] = Step(xc, sigma, param)
 % can perform all the integrations in dimensionless coordinates, if
 % desired.
 
-e = @(x)  eFromState(x(:,1),x(:,4),param.sf);
+e = @(x)  eFromState(x(:,1),x(:,4));
 [tn,xn] = ode45(@(t,x) dynamics(t,x,sigma(e(x'),x(4)),param), [0,param.dt],xc,[]);
-
 
 for i = 1:length(tn)
     Sigma(i) = sigma(e(xn(i,:)),xn(i,4));
@@ -234,8 +247,8 @@ function [dX,L,D,M,done] = dynamics(t,x,sigma,param)
 
 % These stopping conditions should be in param
 hmin = 6; %km
-vmax = 480; %m/s
-if (x(4) < vmax && x(7) <= 0) || (x(1)-param.planet.radiusEquatorial)/1000 < hmin %e > param.ef
+vmax = 480/param.sf.velocity; %m/s
+if (x(4) < vmax && x(7) <= 0) || (x(1)*param.sf.radius-param.planet.radiusEquatorial)/1000 < hmin %e > param.ef
     dX = zeros(size(x));
     done = true;
     L = nan;
@@ -243,25 +256,26 @@ if (x(4) < vmax && x(7) <= 0) || (x(1)-param.planet.radiusEquatorial)/1000 < hmi
     M = nan;
 else
     done = false;
-    [g,L,D,~,M,a,rho] = EntryForces(x,param.planet,param.vehicle);
+    [g,L,D,~,M,a,rho] = EntryForces(x,param.planet,param.vehicle,param.sf);
+    
     if param.ENFORCEBANK
         sigma_ex = Saturate(x(8),-param.bankLimits.angleMax,param.bankLimits.angleMax);
         dx = EntryDynamics(x,sigma_ex,g,L,D);
         du = BankAngleDynamics(t,x(8:9),sigma,param.bankLimits,param.bankGains);
-
+        
     else
         dx = EntryDynamics(x,sigma,g,L,D);
         du = [];
     end
-
+    
     dX = [dx;-x(4)*cos(x(5))/x(1);du]; % Augment the state with the range computation and bank dynamics
 end
 
 
 end
 
-function sf = getScaleFactors(planet)
-if nargin == 1
+function sf = getScaleFactors(planet,scale)
+if scale
     sf.time = sqrt(planet.radiusEquatorial/planet.gm);
     sf.velocity = sqrt(planet.gm*planet.radiusEquatorial);
     sf.radius = planet.radiusEquatorial;
@@ -272,22 +286,26 @@ else
 end
 end
 
-function xout = Scale(x,sf)
+function xout = Scale(x,param)
+%x = [r,theta,phi,v,gamma,psi,s] (+[sigma, sigma_dot] if bank constraints)
+%xout = x scaled appropriately based on flags
 
-%x = [r,theta,phi,v,gamma,psi,s]
-%xout = x dimensionless
-
-xout = x./[sf.radius,1,1,sf.velocity,1,1,1];
+xout = x;
+xout(1) = x(1)/param.sf.radius;
+xout(4) = x(4)/param.sf.velocity;
 end
+function xout = Unscale(x,param)
+%x = [r,theta,phi,v,gamma,psi,s] (+[sigma, sigma_dot] if bank constraints)
+%xout = x scaled appropriately based on flags
 
-function e = eFromState(r,v,sf)
-% Computes the current energylike variable e from the dimensional radius
-% and velocity
-if nargin < 3 || isempty(sf)
-    e = 1./r-0.5*v.^2;
-else
-    e =  1./(r/sf.radius)-0.5*(v/sf.velocity).^2;
+xout = x;
+xout(:,1) = x(:,1)*param.sf.radius;
+xout(:,4) = x(:,4)*param.sf.velocity;
 end
+function e = eFromState(r,v)
+% Computes the current energylike variable e from the radius and velocity
+e = 1./r-0.5*v.^2;
+
 end
 
 function sigma0 = computeSigma0(xc,sigma0,param) % Add tons of inputs here
@@ -329,8 +347,8 @@ function [snew,limit,e] = DeadbandLateralGuidance(state,sBank,sCR,param)
 % vf = 2500;
 lim0 = 0.1;
 limf = 0.02;
-v0 = 5505;
-vf = 500;
+v0 = 5505/param.sf.velocity;
+vf = 500/param.sf.velocity;
 
 M = (lim0-limf)/(v0-vf);
 CR0 = lim0-M*v0;
@@ -338,7 +356,7 @@ limit = limf*(state(4)<vf && state(4)>0) + (CR0 + state(4)*M).*(state(4)>=vf);
 psi_d = DesiredHeading(state(2),state(3),param.thetaf,param.phif);
 e = psi_d-state(6);
 
-if state(4) < 180 
+if state(4) < 180/param.sf.velocity
     snew = -sCR;
 else
     

@@ -1,7 +1,9 @@
 %Calculates the coefficient of drag and coefficient of lift for a given
 %Mach number for the MSL-like vehicle described in Benito's dissertation.
 
-function [CD,CL,dCDdM] = AerodynamicCoefficients(Mvector)
+function [CD,CL,dCDdM,dCLdM] = AerodynamicCoefficients(Mvector)
+
+partials = (nargout > 2);
 
 pD = [2.598e4; -1022; -2904; 678.6; -44.33; 1.373];
 qD = [1.505e4; 1687; -2651; 544.1; -34.11; 1];
@@ -14,12 +16,15 @@ for i = 1:length(Mvector)
     mD = M.^(0:5);
     CD(i,1) = (mD*pD)/(mD*qD);
 
-    dCDdM(i,1) = ( ((1:5).*mD(1:5))*pD(2:6) )/(mD*qD) - CD(i)/(mD*qD)*( ((1:5).*mD(1:5))*qD(2:6) );
 
 
     mL = M.^(0:4);
     CL(i,1) = (mL*pL)/(mL*qL);
-
+    
+    if partials
+    dCDdM(i,1) = ( ((1:5).*mD(1:5))*pD(2:6) )/(mD*qD) - CD(i)/(mD*qD)*( ((1:5).*mD(1:5))*qD(2:6) );
+    dCLdM(i,1) = ( ((1:4).*mL(1:4))*pL(2:5) )/(mL*qL) - CL(i)/(mL*qL)*( ((1:4).*mL(1:4))*qL(2:5) );
+    end
 end
 
 
