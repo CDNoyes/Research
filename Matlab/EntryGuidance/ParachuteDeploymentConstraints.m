@@ -29,9 +29,10 @@ x = linspace(Vmin(1),Vmax(1));
 y = ones(1,length(x))*h_min/1000;
 h = h(1:j);
 if PLOT
-plot(Vmax,h/1000,Vmin,h/1000,x,y)
-xlabel('Velocity (m/s)')
-ylabel('Altitude (km)')
+    [lineSpecs,textSpecs,figSpecs] = PlotSpecs();
+plot(Vmax,h/1000,Vmin,h/1000,x,y,lineSpecs{:})
+xlabel('Velocity (m/s)',textSpecs{:})
+ylabel('Altitude (km)',textSpecs{:})
 
 end
 %find the equation of the line

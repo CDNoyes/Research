@@ -132,14 +132,14 @@ set(gcf,'name','Heading', figSpecs{:})
 n = n+1;
 figure(n)
 subplot 211
-plot(t,Saturate(sig/dtr,-90,90), lineSpecs{:})
+plot(t,sig/dtr, lineSpecs{:})
 grid on
-axis([0,max(t),-95,95])
+axis([0,max(t),-180,180])
 xlabel('Time (s)',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 subplot 212
-plot(ts.energy_norm,Saturate(sig/dtr,-90,90), lineSpecs{:})
-axis([0,1,-95,95])
+plot(ts.energy_norm,sig/dtr, lineSpecs{:})
+axis([0,1,-180,180])
 xlabel('Normalized Energy',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 grid on

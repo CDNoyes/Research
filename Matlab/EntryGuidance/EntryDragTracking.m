@@ -173,7 +173,7 @@ else
     [a,b] = DragFBL(g,L,D_hat,r,V,gamma,rho,rhodot,D_dot,C_D,C_D_dot); %g,L,D,r,V,gamma,rho,rho_dot,D_dot
     
     % Reference trajectory
-    E_predict = E ;
+    E_predict = 0.99*E ;
     D_des = interp1(ref.energy,ref.D,E_predict,'spline');
     D_des_dot = interp1(ref.energy,ref.D_dot,E_predict,'spline');
     D_des_ddot = interp1(ref.energy,ref.D_ddot,E_predict,'spline');

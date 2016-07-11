@@ -33,6 +33,11 @@ else
     d = [];
 end
 
+if SatisfiesParachute(hkm(end),x(4,end))
+    disp('Parachute deployment constraints are satisfied.')
+else
+    disp('Parachute deployment constraints are NOT satisfied.')
+end
 end
 
 function tf = findTrajLength(t,x)
@@ -45,3 +50,4 @@ else
     tf = t(idx);
 end
 end
+

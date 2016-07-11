@@ -8,6 +8,7 @@ end
 %Constants:
 r_eq = planetModel.radiusEquatorial;        % m
 mu = planetModel.mu;                        % gravitational parameter, m^3/s^2
+
 %Vehicle Parameters
 S = vehicleModel.area;                      % reference wing area, m^2
 m = vehicleModel.mass;                      % mass, kg

@@ -46,7 +46,7 @@ param.CONSTANTBANKSTOP = 2500/sf.velocity; % Stop using constant bank at this ve
 param.FDStep = .000000175; % Finite Difference Step Size in Radians
 
 % Bank Angle Dynamics, Limits, Gains, etc
-param.ENFORCEBANK = 0;
+param.ENFORCEBANK = 1;
 sigmaMin = 10*dtr;
 sigmaMax = 90*dtr;
 K = 10*[0.5643, 1.2934,0]; %Bank Angle dynamics gains
@@ -70,7 +70,7 @@ param.ef = ef;
 
 % Initialization
 t = 0;
-sigma0 = -20*pi/180;
+sigma0 = -16*pi/180;
 bank = sigma0;
 if param.ENFORCEBANK
     x = [x0',bank,0];
@@ -86,10 +86,7 @@ banksign = sign(sigma0); %Current sign of the bank angle
 limit = 0.1; % Heading angle error limit
 headingError = 0;
 
-% The main loop occurs in the time domain so that the guidance cycle can be
-% enforced simply, while the prediction/correction steps happen in the
-% energy domain. EDIT: Actually the predict/correct shit can also happen in
-% the time domain if we want, simply compute e and stop if e > ef.
+% The main loop 
 
 while ~terminate && tCurrent < tmax
     
@@ -113,17 +110,17 @@ while ~terminate && tCurrent < tmax
     end
     
     [tnew,xnew,terminate,banknew,Lnew,Dnew,Mnew] = Step(x(end,:),sigma,param);
-    
+
     % Update the solution vectors
-    if param.DENSE
+    if param.DENSE                      % Take all non-nan elements
         idx = ~isnan(Dnew);
         idx(1) = false;
     else
-        if terminate
+        if  terminate
             temp = ~isnan(Dnew);
-            idx = find(temp,1,'last');
+            idx = find(temp,1,'last');  % Take final non-nan element
         else
-            idx = length(tnew);
+            idx = length(tnew);         % Take final element
         end
     end
     x = [x;xnew(idx,:)]; %Augment the state
@@ -141,6 +138,25 @@ while ~terminate && tCurrent < tmax
         disp(['Current sim time: ',num2str(tCurrent*param.sf.time),' s'])
     end
 end
+
+% Compute a better endpoint:
+% xf = interp1(xnew(1:2,7),[xnew(1:2,1:6),tnew(1:2)],0);
+% t = [t;t(end)+xf(7)];
+% if param.ENFORCEBANK
+%     xf = [xf(1:6),0,x(end,8:9)];
+% else
+%     xf = [xf(1:6),0];
+% end
+% x = [x;xf];
+% 
+% L(end+1) = L(end);
+% D(end+1) = D(end); %Lazy, for now
+% M(end+1) = M(end);
+% bank(end+1) = bank(end);
+% banksign(end+1) = banksign(end);
+% limit(end+1) = limit(end);
+% headingError(end+1) = headingError(end);
+
 %Unscale if needed:
 if SCALE
     t = t*param.sf.time;
@@ -153,6 +169,7 @@ t_elapsed = toc;
 % Display and analyze the results
 disp(['Simulation Terminated. Time elapsed: ',num2str(t_elapsed),' s.'])
 traj = TrajectorySummary(t,x,bank,ref.target.DR,ref.target.CR);
+traj.DR = ref.target.DR-traj.state(:,7).*traj.state(:,1)/1000;
 EntryPlots(traj);
 [lineSpecs,textSpecs,figSpecs] = PlotSpecs();
 
@@ -170,6 +187,8 @@ legend('Trajectory Heading Error','Commanded Sign','Bank Angle (rad)','CR','CR D
 if param.ENFORCEBANK
     figure
     plot(traj.time,bank/dtr,traj.time,Saturate(traj.state(:,8),-sigmaMax,sigmaMax)/dtr)
+    set(gcf,'name','Commanded and Flown', figSpecs{:})
+
 end
 
 end
@@ -178,7 +197,7 @@ end
 function z = Predict(xc,sigmaFun,param)
 
 e = @(x)  eFromState(x(:,1),x(:,4));
-[~,xn] = ode45(@(t,x) dynamics(t,x,sigmaFun(e(x.'),x(4)),param), [0,350],xc,[]);
+[~,xn] = ode45(@(t,x) dynamics(t,x,sigmaFun(e(x.'),x(4)),param,false), [0,350],xc,[]);
 
 z = xn(end,7);
 
@@ -194,13 +213,13 @@ n = 0;
 % Repeatedly call predict while changing "i" to compute the new bank angle
 z1 = Predict(xc,@(e,v) getBankAngle(e,v,sigma0,param),param);
 f1 = 0.5*z1^2; % Current cost
+
 % Compute sensitivity to sigma0
-% dz = ComplexDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0);
 dz = ForwardDiff(@(SIGMA) Predict(xc,@(e,v) getBankAngle(e,v,SIGMA,param),param), sigma0,deltaSigma);
 while n < nMax
     
     
-    sigma = Saturate(sigma0 - (0.5^n)*z1/dz, -pi/2,pi/2); % Eqn 24 to update sigma
+    sigma = Saturate(sigma0 - (0.5^n)*z1/dz, -param.bankLimits.angleMax, param.bankLimits.angleMax); % Eqn 24 to update sigma
     
     znew = Predict(xc,@(e,v) getBankAngle(e,v,sigma,param),param);
     
@@ -232,23 +251,25 @@ function [tn,xn,terminate,Sigma,L,D,M] = Step(xc, sigma, param)
 % desired.
 
 e = @(x)  eFromState(x(:,1),x(:,4));
-[tn,xn] = ode45(@(t,x) dynamics(t,x,sigma(e(x'),x(4)),param), [0,param.dt],xc,[]);
+[tn,xn] = ode45(@(t,x) dynamics(t,x,sigma(e(x'),x(4)),param,true), [0,param.dt],xc,[]);
 
 for i = 1:length(tn)
-    Sigma(i) = sigma(e(xn(i,:)),xn(i,4));
-    [~,L(i),D(i),M(i),done(i)] = dynamics(tn(i),xn(i,:),Sigma(i),param);
+    Sigma(i) = sigma(e(xn(i,:)),xn(i,4)); % sigma command 
+    [~,L(i),D(i),M(i),done(i)] = dynamics(tn(i),xn(i,:),Sigma(i),param,false);
     
 end
 terminate = any(done);
 
 end
 
-function [dX,L,D,M,done] = dynamics(t,x,sigma,param)
-
+function [dX,L,D,M,done] = dynamics(t,x,sigma,param,step)
+h = (x(1)*param.sf.radius-param.planet.radiusEquatorial)/1000;
 % These stopping conditions should be in param
 hmin = 6; %km
-vmax = 480/param.sf.velocity; %m/s
-if (x(4) < vmax && x(7) <= 0) || (x(1)*param.sf.radius-param.planet.radiusEquatorial)/1000 < hmin %e > param.ef
+% vmax = 480/param.sf.velocity; %m/s
+% vmin = 312/param.sf.velocity;
+% if (x(4) < vmax && x(7) <= 0) || (h < hmin) || (x(4) < vmin)
+if (SatisfiesParachute(h,x(4)) && x(7) <= 0) || ((x(1)*param.sf.radius-param.planet.radiusEquatorial)/1000 < hmin) 
     dX = zeros(size(x));
     done = true;
     L = nan;
@@ -257,15 +278,20 @@ if (x(4) < vmax && x(7) <= 0) || (x(1)*param.sf.radius-param.planet.radiusEquato
 else
     done = false;
     [g,L,D,~,M,a,rho] = EntryForces(x,param.planet,param.vehicle,param.sf);
-    
-    if param.ENFORCEBANK
+%     L = L + 0.1;
+%     D = D + 0.1;
+    if param.ENFORCEBANK && step
         sigma_ex = Saturate(x(8),-param.bankLimits.angleMax,param.bankLimits.angleMax);
         dx = EntryDynamics(x,sigma_ex,g,L,D);
         du = BankAngleDynamics(t,x(8:9),sigma,param.bankLimits,param.bankGains);
         
     else
         dx = EntryDynamics(x,sigma,g,L,D);
-        du = [];
+        if param.ENFORCEBANK % Enforce bank but we aren't stepping so no bank angle computation is needed
+            du = [0;0];
+        else
+            du = [];
+        end
     end
     
     dX = [dx;-x(4)*cos(x(5))/x(1);du]; % Augment the state with the range computation and bank dynamics

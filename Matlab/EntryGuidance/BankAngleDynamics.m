@@ -16,6 +16,8 @@ if isa(profile,'function_handle')
 else
     sigmaC = profile;
 end
+
+%% Stiff - saturate function is continuous but not smooth
 x(1) = sign(x(1))*Saturate(abs(x(1)), limits.angleMin, limits.angleMax);
 
 dx(2,1) = Saturate(Kp*(sigmaC-x(1))+Kd*(-x(2)), -limits.acceleration, limits.acceleration); % Acceleration
