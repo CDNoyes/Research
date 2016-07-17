@@ -13,9 +13,9 @@ f = @(t,x,u,mu) [F(t,x,u,mu); -x(3)*trace(J(x,u,mu)*[eye(2);zeros(2)]) ];
 opt = odeset('AbsTol',1e-8,'RelTol',1e-8);
 
 muNom = 0.5;
-uniform = 0;
+uniform = 1;
 if uniform
-    mus = linspace(0.25,0.75,11);
+    mus = linspace(0.25,0.75,300);
     musMC = mus;
     p0 = ones(size(mus))/(mus(end)-mus(1));
     text = ['U','[',num2str(mus(1)),', ',num2str(mus(end)),']'];
@@ -26,7 +26,7 @@ else %normal
     mus = linspace(muNom-3*stdDev,muNom+3*stdDev,10); %PF has to be nicely spaced over the whole domain
     p0 = pdf('Normal',mus,muNom,stdDev);
     text = ['N(',num2str(muNom),', ',num2str(stdDev),')'];
-    boundLabel = 'True 3-sigma bounds'
+    boundLabel = 'True 3-sigma bounds';
     figure(10)
     plot(musMC,pdf('Normal',musMC,muNom,stdDev),'*')
 end
@@ -101,7 +101,7 @@ h3 = plot(0,0,'k--');
 
 xlabel('x_1',textSpecs{:})
 ylabel('x_2',textSpecs{:})
-legend([h0, h1, h2, hb, h3],{'f(E[\mu])',['E[f(\mu)] via MC (n=',num2str(length(musMC)),')'],'E[f(\mu)] via PF',boundLabel,'3-\sigma ellipse est'})
+legend([h0, h1, h2, hb, h3],{'f(E[\mu])',['E[f(\mu)] via MC (n=',num2str(length(musMC)),')'],'E[f(\mu)] via PF',boundLabel,'Bound estimate'})
 
 % figure(3)
 % surf(State{1},State{2},repmat(mus,n,1),State{3})
