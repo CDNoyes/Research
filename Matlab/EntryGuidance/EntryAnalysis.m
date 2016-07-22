@@ -33,7 +33,7 @@ else
     d = [];
 end
 
-if SatisfiesParachute(hkm(end),x(4,end))
+if SatisfiesParachute(hkm(end),x(end,4))
     disp('Parachute deployment constraints are satisfied.')
 else
     disp('Parachute deployment constraints are NOT satisfied.')
