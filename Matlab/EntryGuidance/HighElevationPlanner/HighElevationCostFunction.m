@@ -38,7 +38,7 @@ sigma_min = 18.19*dtr;
 sigma_max = 87.13*dtr;
 fun = @(t) BankAngleProfile(t,t1,t2,t3,sigma_min,sigma_max);
 
-opt = odeset('RelTol',1e-8,'AbsTol',1e-8);
+opt = odeset('RelTol',1e-7,'AbsTol',1e-7);
 [t,x] = ode45(@(T,X) PlannerDynamics(T,X,fun(T),planetModel,vehicleModel),linspace(0, tf,1000), x0,opt);
 
 %Cost function weights:
@@ -52,9 +52,6 @@ phi = x(end,3);
 theta = x(end,2);
 gamma = x(end,5);
 
-%Distance metric using Haversine:
-% [theta_T,phi_T] = FinalLatLon(x0(1),x0(2),x0(4),DR,CR);
-% d = 2*r_eq*asin(sqrt( sin(0.5*(phi_T-phi)).^2 + cos(phi_T).*cos(phi).*sin(0.5*(theta_T-theta)).^2 ));
 
 %Distance metric using range:
 [dr,cr] = Range(x0(2),x0(3),x0(6),theta,phi);

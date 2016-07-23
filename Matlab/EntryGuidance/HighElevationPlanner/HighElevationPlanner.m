@@ -5,7 +5,7 @@ clear; clc; close all
 p = [5,51,250]; % 12.5 km for dr 780
 
 %Setup the optimization tolerances
-opt = optimset('tolX',1e-3,'tolFun',1e-8);
+opt = optimset('tolX',1e-2,'tolFun',1e-4);
 
 %Create the standard models to be used
 mars = Mars();
@@ -21,7 +21,7 @@ CR = 0;
 [cost,t,x] = HighElevationCostFunction(p, mars, vm,DR,CR);
 
 %Show statistics and plots
-tf = EntryAnalysis(t,x,DR,CR);
+% tf = EntryAnalysis(t,x,DR,CR);
 dtr = pi/180;
 sigmaMin = 18.19*dtr;
 sigmaMax = 87.13*dtr;
@@ -29,6 +29,20 @@ Sigma = @(T) BankAngleProfile(T,p(1),p(2),p(3), sigmaMin, sigmaMax); %The ideal 
 
 ref = TrajectorySummary(t,x,Sigma(t),DR,CR);
 EntryPlots(ref)
+
+return
+
+%% Robust Version
+[CD_err,W] = SigmaPoints(0,0.04^2); % +-12% error in drag coefficient
+delta.CD = CD_err;
+delta.rho = zeros(size(CD_err));
+x0 = repmat(ref.state(1,:)',1,length(W.state));
+ref.sp.state = x0;
+ref.sp.W = W;
+ref.sp.delta = delta;
+[p,fval,flag,output] = fminsearch(@(p) HighElevationCostFunctionStochastic(p,mars,vm,DR,CR,ref), p, opt);
+
+
 
 
 
