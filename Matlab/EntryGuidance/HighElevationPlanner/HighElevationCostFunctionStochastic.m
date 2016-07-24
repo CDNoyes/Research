@@ -16,11 +16,11 @@ end
 
 %Optimal control results show that the switching times are never outside
 % [50,220] so we use this info to reduce the search space
-if any(p<50) || any(p>220)
-    J = 1e5*sum(abs(p-Saturate(p,50,220)));
-    [t,x(1:6)] = deal(0);
-    return
-end
+% if any(p<50) || any(p>220)
+%     J = 2e5*sum(abs(p-Saturate(p,50,220)));
+%     [t,x(1:6)] = deal(0);
+%     return
+% end
   
 t1 = p(1);
 t2 = p(2);
@@ -47,22 +47,29 @@ for i = 1:size(ref.sp.state,2)
 
 end
 [xfMean,Pf] = SigmaEval(xf,ref.sp.W);
-h = xfMean(end,1) - r_eq;
-phi = xfMean(end,3);
-theta = xfMean(end,2);
+hMean = (xfMean(1) - r_eq)/1000;
+phiMean = xfMean(3);
+thetaMean = xfMean(2);
 % gamma = xfMean(end,5);
 
 
 %Distance metric using range:
-[dr,cr] = Range(x0(2),x0(3),x0(6),theta,phi);
+x0 = ref.sp.state(:,1);
+[drMean,crMean] = Range(x0(2),x0(3),x0(6),thetaMean,phiMean);
+[dr,cr] = Range(x0(2),x0(3),x0(6),xf(2,1),xf(3,1));
+
+dMean = norm([drMean-DR,crMean-CR]);
 d = norm([dr-DR,cr-CR]);
 
 %Cost function weights:
-k_h = 1e-7;
-% k_gamma = 0;
-k_d = 1;
+k_h = 1e-3; % Expected altitude
+k_d = 1; % Deviation from target point
+k_v = 0*1e3; % Horizontal variance with respect to the mean
 
-J = (-h*k_h + k_d*d);
+Vh = sqrt(Pf(1,1))/1000; % Altitude deviation in km since hMean is also in km
+% J = (-hMean*k_h + k_d*d)+k_v*trace(Pf(2:3,2:3).^0.5);
+
+J = k_d*d + Vh/hMean; % Deterministic Distance for the Nominal with Maximal Altitude Expectation and Minimum Altitude Variance
 
 end
 

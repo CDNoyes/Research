@@ -16,11 +16,11 @@ end
 
 %Optimal control results show that the switching times are never outside
 % [50,220] so we use this info to reduce the search space
-if any(p<50) || any(p>220)
-    J = 1e5*sum(abs(p-Saturate(p,50,220)));
-    [t,x(1:6)] = deal(0);
-    return
-end
+% if any(p<50) || any(p>220)
+%     J = 2e5*sum(abs(p-Saturate(p,50,220)));
+%     [t,x(1:6)] = deal(0);
+%     return
+% end
   
 t1 = p(1);
 t2 = p(2);
