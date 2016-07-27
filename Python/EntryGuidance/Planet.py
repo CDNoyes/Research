@@ -1,4 +1,8 @@
 from math import exp
+import sys
+from os import path
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+import Utils.perturbUtils as perturb
 
 class Planet:
     def __init__(self, name = 'Mars'):
@@ -50,18 +54,13 @@ class Planet:
     def atmosphere(self, h):
         if self.name == 'Mars':
         #Density computation:
-            rho0 = 0.0158
-            scale_height = 9354.5
+            rho0 = perturb.getVar('density0')
+            scale_height = perturb.getVar('densitySH')
             rho = rho0*exp(-h/scale_height)
         # Local speed of sound computation:
             coeff = [223.8, -0.2004e-3, -1.588e-8, 1.404e-13]
-            a = 0
-            i = 0
-            for c in coeff:
-                a = a + c*h**i
-                i = i+1
-            
+            a = sum([c*h**i for i,c in enumerate(coeff)])
             return rho,a
         else:
-          print 'Atmosphere model not yet implemented!'
-          return float('nan'), float('nan')
+            print 'Atmosphere model not yet implemented!'
+            return float('nan'), float('nan')

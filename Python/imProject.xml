@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="imuQ file:/Users/ldpeters/sw/lims-developers/trunk/install/include/imuQ/XML/Schema/Project.xsd" 
+    xmlns="imuQ"
+    name="MAV"
+    db="imProjectDB.xml">
+
+    <model dir="Analysis/SSTO" db="imModelDB.xml"/>
+    <model dir="Analysis/TSTO" db="imModelDB.xml"/>
+    <model dir="Analysis/Peregrine" db="imModelDB.xml"/>
+    
+</Project>

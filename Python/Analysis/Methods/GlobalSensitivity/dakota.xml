@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XPrepro 
+	xmlns="imuQ"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="imuQ file:/opt/lims/trunk/install/include/imuQ/XML/Schema/XPrepro.xsd"
+	unitSystem="SI"
+	defaultDBRoot="ModelDB[MAV_5.3]">
+<Dakota>
+environment
+	tabular_data
+		tabular_data_file 'dakota.dat'
+
+method
+	sampling
+		sample_type  lhs
+		samples      50
+		seed         3412
+		distribution cumulative
+		variance_based_decomp
+
+model
+	single
+
+<variables dbPath="::"/>
+
+interface
+	analysis_drivers = 'run_dshell_protocol'
+		fork
+			parameters_file = 'delta_Parameters.inc'
+			results_file    = 'analysis_Results.out'
+			work_directory
+				named 'work'
+				directory_tag
+				copy_files 'template/*'
+		failure_capture recover = <failureRecoveryValues dbPath="::dshellProtocol[Scenario_001-TimeSimulation]"/>
+	asynchronous
+		evaluation_concurrency = <evaluationConcurrency dbPath="::qmuProtocol[Scenario_001-TimeSimulation]:dakotaProtocol[Delta-006-Global_Sensitivity]"/>
+
+<responses dbPath="::dshellProtocol[Scenario_001-TimeSimulation]"/>
+	no_gradients
+	no_hessians
+		
+</Dakota>
+</XPrepro>
