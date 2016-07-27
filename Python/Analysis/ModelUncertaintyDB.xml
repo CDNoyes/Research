@@ -8,14 +8,14 @@
         <parameters>
                 
 <!-- Vehicle Parameters -->
-            <variable name="CD" value="0" units="N/m" description="Drag Coefficient Error">
+            <variable name="CD" value="0" units="" description="Drag Coefficient Error">
                 <variability mapping="replace">
                     <aleatory>
                         <uniform lowerBound="-0.10" upperBound="+0.10"/>
                     </aleatory>
                 </variability>
             </variable>
-            <variable name="CL" value="0" units="N/m" description="Lift Coefficient Error">
+            <variable name="CL" value="0" units="" description="Lift Coefficient Error">
                 <variability mapping="replace">
                     <aleatory>
                         <uniform lowerBound="-0.10" upperBound="+0.10"/>
@@ -24,7 +24,7 @@
             </variable>
 
 <!-- Environment Parameters -->
-            <variable name="density0" value="0.0158" units="" description="rho0 used in Exponential Atmosphere Model">
+            <variable name="density0" value="0.0158" units="kg/m^3" description="rho0 used in Exponential Atmosphere Model">
                 <variability mapping="scale">
                     <aleatory>
                         <normal mean="0" stdDev="0.0333" lowerBound="-0.10" upperBound="+0.10"/>

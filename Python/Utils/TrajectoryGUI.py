@@ -24,13 +24,13 @@ if len(sys.argv) > 1:
     if not results_dir[-1] == '/':
         results_dir = results_dir + '/'
 else:
-    results_dir = 'results/'
+    results_dir = 'Results/'
     
-results_file_extension = '.dat'
+results_file_extension = '.txt'
 
 results_dir_files = listdir(results_dir)
 result_files = [file for file in results_dir_files if (file.find(results_file_extension)>-1 and not 'event' in file and not 'inputs' in file and not 'summary' in file)]
-result_files.insert(0,result_files.pop(result_files.index('trajectory.dat'))) # move trajectory.dat to first position
+result_files.insert(0,result_files.pop(result_files.index('trajectory.txt'))) # move trajectory.dat to first position
 
 
 # Read the headers in result_files

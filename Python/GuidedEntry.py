@@ -6,9 +6,10 @@ from scipy.interpolate import interp1d
 import sys
 from os import path
 sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+from Utils.perturbUtils import writeInputLog, inputLogInit
+inputLogInit()
 
 from EntryGuidance.EntryEquations import Entry
-
 
 #Consider using an fsm
 
@@ -30,9 +31,17 @@ r,theta,phi,v,gamma,psi = X[:,0], X[:,1], X[:,2], X[:,3], X[:,4], X[:,5]
 #Write time histories to files for viewing via the guis
 #Construct a single python dictionary and save it for use with MCP codes.
 
-with file('./Results/trajectory.txt') as result:
+writeInputLog()
+fmt = '%-20.4f'
+with file('./Results/trajectory.txt','w') as result:
     
     result.write('#Trajectory Data\n')
-    # result.write('State')
-    # result.write('Units')
-    np.savetxt(result,Xfmt = '%-30.4f')
+    for state in ['time','radius','longitude','latitude','velocity','fpa','heading']:
+        result.write("{0:20}".format(state)) 
+    result.write('\n')
+    for unit in ['s','m','rad','rad','m/s','rad','rad']:
+        result.write("{0:20}".format(unit)) 
+    result.write('\n')
+    # np.savetxt(result, np.concatenate((time.T,X),axis=1), fmt = fmt)
+    # np.savetxt(result, np.hstack((time.T,X)), fmt = fmt)
+    np.savetxt(result, np.c_[time,X], fmt = fmt)
