@@ -1,5 +1,5 @@
-Python/*.pyc
-Matlab/*.asv
+*.pyc
+*.asv
 Matlab/misc
 Matlab/Images
 Matlab/*.txt

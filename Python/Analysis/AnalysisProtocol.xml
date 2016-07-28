@@ -5,14 +5,14 @@
     xmlns="imuQ">
     <qmuProtocol
         name="TimeSimulation"
-        destination="Analysis/">
-        <pythonProtocol 
+        destination="Analysis">
+        <dshellProtocol 
             name="TimeSimulation" 
             inputFile="GuidedEntry.py"
             commandLinePrefix="/bin/nice -n 10 "
             commandLineArguments="">
             <auxDir     path="Results"/>
-            <auxFile    path="Baseline/run_python_protocol.pbs"/>
+            <auxFile    path="Baseline/run_dshell_protocol.pbs"/>
             <postScript path="Baseline/postProcess_results.py"/>
             <symLink    path="EntryGuidance"/>
             <symLink    path="Utils"/>
@@ -24,11 +24,12 @@
                 <responseFunction name="fpa"                units="deg"/>
                 <responseFunction name="heading"            units="deg"/>
             </responses>
-        </pythonProtocol>
+        </dshellProtocol>
         
         <dakotaProtocol 
             name="LHS" 
             inputFile="Analysis/Methods/LHS/dakota.xml"
+            destination="Methods/LHS"
             evaluationConcurrency="5">
             <auxFile    path="Analysis/Methods/LHS/run_dakota_protocol.pbs"/>
             <postScript path="Analysis/Methods/LHS/postProcess_results.py"/>

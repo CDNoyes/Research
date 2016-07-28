@@ -3,7 +3,7 @@
     xmlns="imuQ" 
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
     xsi:schemaLocation="imuQ file:/Users/ldpeters/sw/lims/trunk/install/include/imuQ/XML/Schema/ModelDB.xsd" 
-    name="MAV_5.3">
+    name="MarsEDL">
     <multiphysicsModel name="MarsEDL">
         <parameters>
                 
