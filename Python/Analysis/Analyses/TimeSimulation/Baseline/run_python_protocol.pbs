@@ -1,0 +1,6 @@
+#!/bin/csh
+#PBS -l select=1:ncpus=16:mpiprocs=16 -l place=scatter:excl
+#PBS -l walltime=3:00:00
+
+cd $PBS_O_WORKDIR
+run_dshell_protocol

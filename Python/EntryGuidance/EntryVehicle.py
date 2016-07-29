@@ -2,6 +2,12 @@ class EntryVehicle:
     def __init__(self, mass = 2804.0, area = 15.8):
         self.mass = mass
         self.area = area
+        import sys
+        from os import path
+        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        import Utils.perturbUtils as perturb
+        self.CD = perturb.getVar('CD')
+        self.CL = perturb.getVar('CL')
 
         
     def aerodynamic_coefficients(self, M):
@@ -26,4 +32,4 @@ class EntryVehicle:
             den = den + qL[i]*M**i
             
         cL = num/den
-        return cD, cL
+        return cD*(1+self.CD), cL*(1+self.CL)

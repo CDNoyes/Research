@@ -13,7 +13,7 @@ environment
 method
 	sampling
 		sample_type  lhs
-		samples      5000
+		samples      50
 		seed         1234
 		distribution cumulative
 
@@ -22,7 +22,7 @@ model
 
 <variables dbPath="::"/>
 interface
-	analysis_drivers = 'run_python_protocol'
+	analysis_drivers = 'run_dshell_protocol'
 		fork
 			parameters_file = 'delta_Parameters.inc'
 			results_file    = 'analysis_Results.out'
@@ -34,7 +34,7 @@ interface
 	asynchronous
 		evaluation_concurrency = <evaluationConcurrency dbPath="::qmuProtocol[TimeSimulation]:dakotaProtocol[LHS]"/>
 
-<responses dbPath="::pythonProtocol[TimeSimulation]"/>
+<responses dbPath="::dshellProtocol[TimeSimulation]"/>
 	no_gradients
 	no_hessians
 		

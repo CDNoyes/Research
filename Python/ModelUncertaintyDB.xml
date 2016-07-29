@@ -65,6 +65,6 @@
 
     </multiphysicsModel>
     <analyses>
-        <importProtocolDB dir="Analyses" db="AnalysisProtocol.xml"/>
+        <importProtocolDB dir="Analysis" db="AnalysisProtocol.xml"/>
     </analyses>
 </ModelDB>

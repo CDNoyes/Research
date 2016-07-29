@@ -5,17 +5,15 @@
     xmlns="imuQ">
     <qmuProtocol
         name="TimeSimulation"
-        destination="Analysis">
+        destination="Analyses/TimeSimulation">
         <dshellProtocol 
             name="TimeSimulation" 
-            inputFile="GuidedEntry.py"
-            commandLinePrefix="/bin/nice -n 10 "
-            commandLineArguments="">
+            inputFile="IMUQ_PROJECT_SOURCE_DIR/GuidedEntry.py">
             <auxDir     path="Results"/>
-            <auxFile    path="Baseline/run_dshell_protocol.pbs"/>
-            <postScript path="Baseline/postProcess_results.py"/>
-            <symLink    path="EntryGuidance"/>
-            <symLink    path="Utils"/>
+            <auxFile    path="Analyses/TimeSimulation/Baseline/run_dshell_protocol.pbs"/>
+            <postScript path="Analyses/TimeSimulation/Baseline/postProcess_results.py"/>
+            <symLink    path="IMUQ_PROJECT_SOURCE_DIR/EntryGuidance"/>
+            <symLink    path="IMUQ_PROJECT_SOURCE_DIR/Utils"/>
             <responses>
                 <responseFunction name="radius"             units="m"/>
                 <responseFunction name="longitude"          units="deg"/>
@@ -25,17 +23,17 @@
                 <responseFunction name="heading"            units="deg"/>
             </responses>
         </dshellProtocol>
-        
         <dakotaProtocol 
             name="LHS" 
-            inputFile="Analysis/Methods/LHS/dakota.xml"
-            destination="Methods/LHS"
+            inputFile="Analyses/TimeSimulation/Methods/LHS/dakota.xml"
             evaluationConcurrency="5">
-            <auxFile    path="Analysis/Methods/LHS/run_dakota_protocol.pbs"/>
-            <postScript path="Analysis/Methods/LHS/postProcess_results.py"/>
+            <auxFile    path="Analyses/TimeSimulation/Methods/LHS/run_dakota_protocol.pbs"/>
+            <postScript path="Analyses/TimeSimulation/Methods/LHS/postProcess_results.py"/>
         </dakotaProtocol>
-        <dakotaProtocol 
-        <dakotaProtocol 
+    </qmuProtocol>
+</ProtocolDB>
+
+<!--         <dakotaProtocol 
             name="ParameterStudy" 
             inputFile="Analysis/Methods/ParameterStudy/dakota.xml"
             evaluationConcurrency="10">
@@ -55,6 +53,4 @@
             evaluationConcurrency="5">
             <auxFile    path="Analysis/Methods/QMC/run_dakota_protocol.pbs"/>
             <postScript path="Analysis/Methods/QMC/postProcess_results.py"/>
-        </dakotaProtocol>
-    </qmuProtocol>
-</ProtocolDB>
+        </dakotaProtocol> -->

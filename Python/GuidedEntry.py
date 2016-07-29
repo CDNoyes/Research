@@ -12,7 +12,7 @@ inputLogInit()
 from EntryGuidance.EntryEquations import Entry
 
 #Consider using an fsm
-
+#Add creation of Results dir
 
 
 entry = Entry()
