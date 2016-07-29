@@ -91,14 +91,14 @@ for i = 1:length(sets)
     hold on
     plot(ref.target.lon/dtr,ref.target.lat/dtr,'r^','MarkerSize',10)
     plot(mean(xf{i}(:,2))/dtr, mean(xf{i}(:,3))/dtr,'rx','MarkerSize',10)
-    DrawNormalEllipse(Mean(i,2:3)/dtr,Pf{i}(2:3,2:3)/dtr,3,'r--');
+%     DrawNormalEllipse(Mean(i,2:3)/dtr,Pf{i}(2:3,2:3)/dtr,3,'r--');
     plot(xMeanUT{i}(2)/dtr,xMeanUT{i}(3)/dtr,'k*','MarkerSize',10)
     DrawNormalEllipse(xMeanUT{i}(2:3)/dtr,PfUT{i}(2:3,2:3)/dtr,3,'k--');
     axis([-72.7 -71.9 -41.4 -41.28])
     xlabel('Longitude (deg)')
     ylabel('Latitude (deg)')
     title(labels{i})
-    legend('MC','Target','True Mean','True 3-\sigma','Est. Mean','Est. 3-\sigma')
+    legend('MC','Target','True Mean','Est. Mean','Est. 3-\sigma')
 end
 
 

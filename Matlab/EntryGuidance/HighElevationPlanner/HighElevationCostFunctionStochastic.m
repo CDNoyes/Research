@@ -73,7 +73,9 @@ switch ref.method
         for i = 1:size(ref.sp.state,1)
            xfMean(i) = trapz(ref.sp.delta.CD,xf(i,:).*ref.sp.delta.p0);
            Pf(i,i) = trapz(ref.sp.delta.CD,xf(i,:).^2.*ref.sp.delta.p0)-xfMean(i)^2;
-            
+           if 1 %Compute Covariance terms 
+               
+           end
         end
 end
 hMean = (xfMean(1) - r_eq)/1000;
