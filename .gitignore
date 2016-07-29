@@ -1,5 +1,6 @@
-*.pyc
-*.asv
+Python/*.pyc
+Matlab/*.asv
 Matlab/misc
 Matlab/Images
-*.txt
+Matlab/*.txt
+Python/builds

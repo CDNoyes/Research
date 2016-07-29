@@ -1,9 +1,27 @@
-#Define the equations of motion for an entry vehicle under various assumptions
 from numpy import sin, cos, tan
 import numpy as np
 from EntryVehicle import EntryVehicle
 from Planet import Planet
+
 class Entry:
+    
+    def __init__(self, PlanetModel = Planet('Mars'), VehicleModel = EntryVehicle(), Coriolis = False, DegFreedom = 3):
+        self.planet = PlanetModel
+        self.vehicle = VehicleModel
+        if DegFreedom == 2:
+            self.dyn_model = self.__entry_2dof
+        elif DegFreedom == 3:
+            if Coriolis:
+                self.dyn_model =self.__entry_vinhs
+            else:
+                self.dyn_model = self.__entry_3dof
+        else:
+            print 'Inapproriate number of degrees of freedom.'
+            
+    
+    def dynamics(self, control_fun):
+        return lambda x,t: self.dyn_model(x, t, control_fun)
+        
     #3DOF, Non-rotating Planet (i.e. Coriolis terms are excluded)
     def __entry_3dof(self, x, t, control_fun):
         r,theta,phi,v,gamma,psi = x
@@ -71,19 +89,3 @@ class Entry:
     
         return np.array([dh,ds,dv,dgamma])
     
-    def __init__(self, PlanetModel = Planet('Mars'), VehicleModel = EntryVehicle(), Coriolis = False, DegFreedom = 3):
-        self.planet = PlanetModel
-        self.vehicle = VehicleModel
-        if DegFreedom == 2:
-            self.dyn_model = self.__entry_2dof
-        elif DegFreedom == 3:
-            if Coriolis:
-                self.dyn_model =self.__entry_vinhs
-            else:
-                self.dyn_model = self.__entry_3dof
-        else:
-            print 'Inapproriate number of degrees of freedom.'
-            
-    
-    def dynamics(self, control_fun):
-        return lambda x,t: self.dyn_model(x, t, control_fun)
