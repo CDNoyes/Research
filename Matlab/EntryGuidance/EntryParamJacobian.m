@@ -22,7 +22,7 @@ v = x(:,4);
 % dCLdv = C_L_prime./(a/ScaleFactor.velocity);
 % dCDdv =  C_D_prime./(a/ScaleFactor.velocity);
 
-J = zeros(6,6,length(r));
+J = zeros(6,3,length(r));
 
 %Partials of theta_dot wrt
 %All zeros
@@ -47,7 +47,7 @@ J(6,3,:) = cos(sigma)./v.*L./rho; % rho
 
 %Partials of v_dot wrt
 J(4,1,:) = -D./C_D;          % CD
-% J(4,4,:) = 0;              % CL
-J(4,5,:) = -D./rho;          % rho
+% J(4,2,:) = 0;              % CL
+J(4,3,:) = -D./rho;          % rho
 
 end
