@@ -22,7 +22,7 @@ model
 
 <variables dbPath="::"/>
 interface
-	analysis_drivers = 'run_dshell_protocol'
+	analysis_drivers = 'run_python_protocol'
 		fork
 			parameters_file = 'delta_Parameters.inc'
 			results_file    = 'analysis_Results.out'
@@ -30,11 +30,11 @@ interface
 				named 'work'
 				directory_tag
 				copy_files 'template/*'
-		failure_capture recover = <failureRecoveryValues dbPath="::dshellProtocol[TimeSimulation]"/>
+		failure_capture recover = <failureRecoveryValues dbPath="::pythonProtocol[TimeSimulation]"/>
 	asynchronous
 		evaluation_concurrency = <evaluationConcurrency dbPath="::qmuProtocol[TimeSimulation]:dakotaProtocol[LHS]"/>
 
-<responses dbPath="::dshellProtocol[TimeSimulation]"/>
+<responses dbPath="::pythonProtocol[TimeSimulation]"/>
 	no_gradients
 	no_hessians
 		

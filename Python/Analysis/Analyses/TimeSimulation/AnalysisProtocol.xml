@@ -6,11 +6,11 @@
     <qmuProtocol
         name="TimeSimulation"
         destination="Analyses/TimeSimulation">
-        <dshellProtocol 
+        <pythonProtocol 
             name="TimeSimulation" 
             inputFile="IMUQ_PROJECT_SOURCE_DIR/GuidedEntry.py">
             <auxDir     path="Results"/>
-            <auxFile    path="Analyses/TimeSimulation/Baseline/run_dshell_protocol.pbs"/>
+            <auxFile    path="Analyses/TimeSimulation/Baseline/run_python_protocol.pbs"/>
             <postScript path="Analyses/TimeSimulation/Baseline/postProcess_results.py"/>
             <symLink    path="IMUQ_PROJECT_SOURCE_DIR/EntryGuidance"/>
             <symLink    path="IMUQ_PROJECT_SOURCE_DIR/Utils"/>
@@ -22,7 +22,7 @@
                 <responseFunction name="fpa"                units="deg"/>
                 <responseFunction name="heading"            units="deg"/>
             </responses>
-        </dshellProtocol>
+        </pythonProtocol>
         <dakotaProtocol 
             name="LHS" 
             inputFile="Analyses/TimeSimulation/Methods/LHS/dakota.xml"
