@@ -16,19 +16,17 @@ if __name__ == "__main__":
     #  Define the responses
 
     responses = db.get('ModelDB[MarsEDL]::pythonProtocol[TimeSimulation]:responses')
-
-    with open('./Results/trajectory.txt') as myfile:
-        head = [next(myfile) for x in xrange(3)]
-    
-        varnames = head[1].split()
-        # varunits = head[2].split()
-        data = loadtxt(myfile, skiprows=3)
-  
-    get = lambda name,data: data[-1,varnames.index(name)]    
-  
-    #  Use try-except to return gracefully to DAKOTA after failures
-
     try:
+
+        with open('./results/trajectory.txt') as myfile:
+            head = [next(myfile) for x in xrange(3)]
+        
+            varnames = head[1].split()
+            # varunits = head[2].split()
+            data = loadtxt(myfile, skiprows=3)
+      
+        get = lambda name,data: data[-1,varnames.index(name)]    
+  
                   
         #  Compute the system response quantities
         

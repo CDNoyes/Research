@@ -35,3 +35,15 @@ def HEPBank(T,t1,t2,t3,minBank = np.radians(15.), maxBank = np.radians(85.)):
             return -1.
     else:
         return bank
+        
+def HEPCost(T, x0):
+
+    time = np.linspace(0,300,1000)
+
+    hep = lambda x,t: HEPBank(t,T[0],T[1],T[2])
+    X = odeint(entry.dynamics(hep), x0, time)
+    
+    
+
+
+    return

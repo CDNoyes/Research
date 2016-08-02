@@ -24,7 +24,7 @@ if len(sys.argv) > 1:
     if not results_dir[-1] == '/':
         results_dir = results_dir + '/'
 else:
-    results_dir = 'Results/'
+    results_dir = 'results/'
     
 results_file_extension = '.txt'
 

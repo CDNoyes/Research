@@ -18,34 +18,6 @@ def getVar(name):
     
     return value
 
- 
-# def getVec3DCartesian(name,elements = ['_X','_Y','_Z']):
-    # vec = getVar(0,'vector3D[{0}]'.format(name), isVariable=False)
-    # val = [vec.x.float(unitSystem='SI'),vec.y.float(unitSystem='SI'),vec.z.float(unitSystem='SI')]
-    # units = [vec.x.units(unitSystem='SI'),vec.y.units(unitSystem='SI'),vec.z.units(unitSystem='SI')]
-    # for text, v, unit in zip(elements, val, units):
-        # addEntry(name+text, v, unit)
-
-    # return val
-
-# def getVec3DRotation(name, returnSOA=False):
-    # from Math import SOA_Py as soa
-    
-    # R = getVar(0,'vector3D[{0}]'.format(name), isVariable=False)
-    # q = soa.SOAQuaternion()
-    # q.identity()
-    # qtemp = soa.SOAQuaternion()
-    # for rotation in R.rotations:
-        # axis = [0,0,0]
-        # axis[rotation.axis.value-1] = 1
-        # addEntry(name+"_"+rotation.name, rotation.angle.float(unitSystem=unitSystem),rotation.angle.units(unitSystem=unitSystem))
-        # qtemp.setAngleAxis(soa.SOAVector3(axis), rotation.angle.float(unitSystem=unitSystem))
-        # q = qtemp*q
-    # if returnSOA:
-        # return q
-    # else:
-        # return [qi for qi in q()] # Return as list rather than tuple
-    
 
 #Input log methods -  could potentially have their own file but they integrate seamlessly with the perturbUtils.
 def inputLogInit():
@@ -71,7 +43,7 @@ def writeInputLog():
     
     global inputLog
     spacing = 40
-    file = open('./Results/inputs.dat','w') # Create summary file to write to
+    file = open('./results/inputs.dat','w') # Create summary file to write to
     file.write('#Simulation inputs: '+ str(len(inputLog.keys())) +'\n')
     file.write('Input name'+ ' '*(spacing-10)) #10 is len('Input name')
   

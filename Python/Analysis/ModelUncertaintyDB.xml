@@ -47,7 +47,7 @@
                         </aleatory>
                     </variability> -->
             </variable>
-            <variable name="longitude" value="90" units="deg" description="Longitude perturbation in radians">
+            <variable name="longitude" value="0" units="deg" description="Longitude perturbation in radians">
 <!--                 <variability mapping="add">
                     <aleatory>
                         <uniform lowerBound="-8.6e-4" upperBound="+8.6e-4"/>

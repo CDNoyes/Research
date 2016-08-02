@@ -68,3 +68,15 @@ class Planet:
         else:
             print 'Atmosphere model not yet implemented!'
             return float('nan'), float('nan')
+            
+    # def range(self,lon0,lat0,heading0,lonc,latc):
+        # '''Computes the downrange and crossrange between two lat/lon pairs with a given initial heading.'''
+        # from numpy import arccos, arcsin, sin, cos
+        
+        
+        
+        # return
+        
+    # def coords(self,lon0,lat0,heading0,dr,cr):
+        # '''Computes the coords of a target a given downrange and crossrange from an initial location and heading.'''
+        # return
