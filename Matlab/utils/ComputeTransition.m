@@ -23,21 +23,24 @@ m = size(control,2); % This allows an empty control to be used to signify no dep
 
 data.n = n;
 data.m = m;
-data.dim = n+m;
+% data.dim = n+m;
 data.time = time;
 data.state = state;
 data.control = control;
 data.jacobian = J;
 
-STM_vec0 = reshape(eye(n+m),[],1);
+STM_vec0 = reshape(eye(n),[],1);
 opt = []; % odeset('AbsTol',1e-9,'RelTol',1e-9);
 [~,STM_vec] = ode45(@dynamics, time, STM_vec0,opt,data);
 
 if dense
     % Compute individual STMs here
     STM = cell(1,N);
+    for i = 1:N
+        STM{i} = reshape(STM_vec(i,:),n,n);
+    end
 else
-    STM = reshape(STM_vec(end,:),n+m,n+m);
+    STM = reshape(STM_vec(end,:),n,n);
     
 end
 
@@ -57,12 +60,12 @@ else
 end
 
 J = data.jacobian(state,control);
-M = reshape(x,data.dim,data.dim);
+M = reshape(x,data.n,data.n);
 
 
 % Compute derivative
-dX = [J(1:data.n,1:data.dim)*M;zeros(data.m,data.dim)];
+% dX = J*M;
 
-dx = reshape(dX,[],1);
+dx = reshape(J*M,[],1);
 
 end

@@ -32,18 +32,23 @@ EntryPlots(ref)
 return
 save('EntryGuidance/HighElevationPlanner/Trajectories/controlHEP.mat','ref','p');
 %% Robust Version
+ref.P0 = zeros(9);
+ref.P0(7,7) = 0.04^2;
 [CD_err,W] = SigmaPoints(0,0.04^2); % +-12% error in drag coefficient
+CD_err = linspace(-.16,.16,9);
 delta.CD = CD_err;
 delta.rho = zeros(size(CD_err));
-x0 = repmat(ref.state(1,:)',1,length(W.state));
+delta.p0 = normpdf(delta.CD,0,0.04);
+x0 = repmat(ref.state(1,:)',1,length(delta.CD));
 ref.sp.state = x0;
 ref.sp.W = W;
 ref.sp.delta = delta;
 ref.planet = mars;
 ref.vehicle = vm;
-p_rand = p;%sort(rand(1,3)*175); %48.7372   95.7043  167.5637
+ref.method = 'PF';
+p_rand = sort(rand(1,3)*175); %48.7372   95.7043  167.5637
 f_sto = HighElevationCostFunctionStochastic(p,mars,vm,DR,CR,ref);
-[p_rob,f_sto_rob,flag,output] = fminsearch(@(p) HighElevationCostFunctionStochastic(p,mars,vm,DR,CR,ref), p_rand, opt);
+[p_rob,f_sto_rob,flag,output] = fminsearch(@(p) HighElevationCostFunctionStochastic(p,mars,vm,DR,CR,ref), p, opt);
 
 
 % Plot nominal, robustified, and expected values on one plot
@@ -56,11 +61,12 @@ sigmaMax = 87.13*dtr;
 Sigma = @(T) BankAngleProfile(T,p_rob(1),p_rob(2),p_rob(3), sigmaMin, sigmaMax); %The ideal bank profile with only rate constraint
 
 rob = TrajectorySummary(t,x,Sigma(t),DR,CR);
+rob.method = ref.method;
 EntryPlots(rob)
 return
 ref = rob;
 p = p_rob;
-save('EntryGuidance/HighElevationPlanner/Trajectories/controlHEP-R1.mat','ref','p');
+save(['EntryGuidance/HighElevationPlanner/Trajectories/controlHEP-',ref.method,'.mat'],'ref','p');
 
 %% Bank Angle Dynamics - Applying acceleration constraints
 
