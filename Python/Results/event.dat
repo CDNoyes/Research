@@ -1,5 +1,0 @@
-#Events file
-state               time                bank                altitude            radius              longitude           latitude            velocity            fpa                 heading             range               
--                   s                   deg                 km                  m                   rad                 rad                 m/s                 rad                 rad                 km                  
-Init        0.0000            -15.0000           143.0000         3540000.0000          -0.0012            -0.7662           5505.0000           -0.2470            0.0871             0.0000       
-Final      293.3934            15.0000            6.0317          3403031.6997          0.3008             -0.7144           329.0182            -0.4495            0.3427            777.4296      
