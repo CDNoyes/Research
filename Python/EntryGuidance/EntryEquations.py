@@ -2,7 +2,7 @@ from numpy import sin, cos, tan
 import numpy as np
 from EntryVehicle import EntryVehicle
 from Planet import Planet
-from Triggers import DeployParachute
+from Triggers import DeployParachute, TerminateSimulation
 
 class Entry:
     
@@ -22,7 +22,11 @@ class Entry:
             print 'Inapproriate number of degrees of freedom.'
             
     
+    def reset(self):
+        self.tf = None
+    
     def dynamics(self, control_fun):
+        self.reset() # This way, each time a new integration occurs, tf is reset
         return lambda x,t: self.dyn_model(x, t, control_fun)
         
     #3DOF, Non-rotating Planet (i.e. Coriolis terms are excluded)
@@ -33,7 +37,7 @@ class Entry:
         g = self.planet.mu/r**2
         h = r - self.planet.radius
         
-        if self.trigger is not None and self.trigger(s, h/1000., v):   
+        if self.trigger is not None and self.trigger(s, h/1000., v):
             if self.tf is None:
                 self.tf = t
             return np.zeros_like(x)
@@ -58,7 +62,7 @@ class Entry:
         
     #3DOF, Rotating Planet Model - Highest fidelity
     def __entry_vinhs(self, x, t, control_fun):
-        r,theta,phi,v,gamma,psi = x
+        r,theta,phi,v,gamma,psi,s = x
         
         g = self.planet.mu/r**2
         h = r - self.planet.radius
@@ -76,8 +80,9 @@ class Entry:
         dv = -D - g*sin(gamma)
         dgamma = L*cos(sigma)/v + cos(gamma)*(v/r - g/v) + 2*self.planet.omega*cos(psi)*cos(phi)
         dpsi = -L*sin(sigma)/v/cos(gamma) - v*cos(gamma)*cos(psi)*tan(phi)/r + 2*self.planet.omega(tan(gamma)*cos(phi)*sin(psi)-sin(phi))
-        
-        return np.array([dh, dtheta, dphi, dv, dgamma, dpsi])
+        ds = -v/r*self.planet.radius*cos(gamma)
+
+        return np.array([dh, dtheta, dphi, dv, dgamma, dpsi,ds])
         
     #2DOF, Longitudinal Model
     def __entry_2dof(self, x, t, control_fun):
@@ -100,3 +105,30 @@ class Entry:
     
         return np.array([dh,ds,dv,dgamma])
     
+    def altitude(self, r, km=False):
+        if km:
+            return (r-self.planet.radius)/1000.
+        else:
+            return r-self.planet.radius
+            
+    def energy(self, r, v, Normalized=True):
+        E = 0.5*v**2 + self.planet.mu/self.planet.radius-self.planet.mu/r**2
+        if Normalized:
+            return (E-E[0])/(E[-1]-E[0])
+        else:
+            return E
+            
+    def aeroforces(self,r,v):
+ 
+        g = self.planet.mu/r**2
+        h = r - self.planet.radius
+        L = np.zeros_like(h)
+        D = np.zeros_like(h)
+        for i,hi in enumerate(h):
+            rho,a = self.planet.atmosphere(hi)
+            M = v[i]/a
+            cD,cL = self.vehicle.aerodynamic_coefficients(M)
+            f = 0.5*rho*self.vehicle.area*v[i]**2/self.vehicle.mass
+            L[i] = f*cL
+            D[i] = f*cD
+        return L,D

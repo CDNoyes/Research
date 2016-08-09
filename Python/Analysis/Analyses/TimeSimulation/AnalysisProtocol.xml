@@ -26,21 +26,22 @@
         <dakotaProtocol 
             name="LHS" 
             inputFile="Analyses/TimeSimulation/Methods/LHS/dakota.xml"
-            evaluationConcurrency="5">
+            evaluationConcurrency="10">
             <auxFile    path="Analyses/TimeSimulation/Methods/LHS/run_dakota_protocol.pbs"/>
             <postScript path="Analyses/TimeSimulation/Methods/LHS/postProcess_results.py"/>
+        </dakotaProtocol>
+        <dakotaProtocol 
+            name="ParameterStudy" 
+            inputFile="Analyses/TimeSimulation/Methods/ParameterStudy/dakota.xml"
+            evaluationConcurrency="10">
+            <auxFile    path="Analyses/TimeSimulation/Methods/ParameterStudy/run_dakota_protocol.pbs"/>
+            <postScript path="Analyses/TimeSimulation/Methods/ParameterStudy/postProcess_results.py"/>
         </dakotaProtocol>
     </qmuProtocol>
 </ProtocolDB>
 
-<!--         <dakotaProtocol 
-            name="ParameterStudy" 
-            inputFile="Analysis/Methods/ParameterStudy/dakota.xml"
-            evaluationConcurrency="10">
-            <auxFile    path="Analysis/Methods/ParameterStudy/run_dakota_protocol.pbs"/>
-            <postScript path="Analysis/Methods/ParameterStudy/postProcess_results.py"/>
-        </dakotaProtocol>
-        <dakotaProtocol 
+
+       <!--  <dakotaProtocol 
             name="GlobalSensitivity" 
             inputFile="Analysis/Methods/GlobalSensitivity/dakota.xml"
             evaluationConcurrency="5">

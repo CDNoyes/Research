@@ -69,14 +69,27 @@ class Planet:
             print 'Atmosphere model not yet implemented!'
             return float('nan'), float('nan')
             
-    # def range(self,lon0,lat0,heading0,lonc,latc):
-        # '''Computes the downrange and crossrange between two lat/lon pairs with a given initial heading.'''
-        # from numpy import arccos, arcsin, sin, cos
+    def range(self,lon0,lat0,heading0,lonc,latc,km=False):
+        '''Computes the downrange and crossrange between two lat/lon pairs with a given initial heading.'''
+        from numpy import arccos, arcsin, sin, cos, pi, nan_to_num
         
+        LF = arccos(sin(latc)*sin(lat0)+cos(latc)*cos(lat0)*cos(lonc-lon0))
+        sig = arcsin(sin(lonc-lon0)*cos(latc)/sin(LF))
+        zeta = sig+heading0-pi/2.
         
+        DR = nan_to_num(self.radius*arccos(cos(LF)/cos(arcsin(sin(LF)*sin(zeta)))))
+        CR = nan_to_num(-self.radius*arcsin(sin(LF)*sin(zeta)))
+        if km:
+            return DR/1000., CR/1000.
+        else:
+            return DR,CR
         
-        # return
-        
-    # def coords(self,lon0,lat0,heading0,dr,cr):
-        # '''Computes the coords of a target a given downrange and crossrange from an initial location and heading.'''
-        # return
+    def coord(self,lon0,lat0,heading0,dr,cr):
+        '''Computes the coords of a target a given downrange and crossrange from an initial location and heading.'''
+        from numpy import arccos, arcsin, sin, cos, pi
+
+        LF = arccos(cos(dr/self.radius)*cos(cr/self.radius))
+        zeta = arcsin(sin(CR/self.radius)/sin(LF))
+        lat = arcsin(cos(zeta-heading0+pi/2.)*cos(lat0)*sin(LF)+sin(lat0)*cos(LF))
+        lon = lon0 + arcsin(sin(zeta-heading0+pi/2)*sin(LF)/cos(lat))
+        return lon,lat

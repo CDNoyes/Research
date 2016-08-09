@@ -27,14 +27,14 @@
             <variable name="density0" value="0.0158" units="kg/m^3" description="rho0 used in Exponential Atmosphere Model">
                 <variability mapping="scale">
                     <aleatory>
-                        <normal mean="0" stdDev="0.0333" lowerBound="-0.10" upperBound="+0.10"/>
+                        <normal mean="0" stdDev="0.0333" lowerBound="-0.20" upperBound="+0.20"/>
                     </aleatory>
                 </variability>
             </variable>
             <variable name="densitySH" value="9354.5" units="m" description="Scale Height Used in Exponential Atmosphere Model">
                 <variability mapping="scale">
                     <aleatory>
-                        <normal mean="0" stdDev="0.0333" lowerBound="-0.10" upperBound="+0.10"/>
+                        <uniform lowerBound="-0.05" upperBound="+0.05"/>
                     </aleatory>
                 </variability>
             </variable>           

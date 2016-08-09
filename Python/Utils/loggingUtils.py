@@ -12,12 +12,12 @@ def loggingInit():
 
     return
 
-def loggingFinish(states,units,data):
+def loggingFinish(states,units,data,summary):
     import numpy as np
-    from dataUtils import writeEvents
+    from dataUtils import writeEvents, writeSummary
     from perturbUtils import writeInputLog
     writeInputLog()
-    
+    writeSummary(summary)
     fmt = '%-19.4f'
     with file('./results/trajectory.txt','w') as result:
         

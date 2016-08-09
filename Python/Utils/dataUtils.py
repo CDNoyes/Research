@@ -1,7 +1,25 @@
 
+def writeSummary(summaryData):
+    
+    headLine = '#Summary File'
+    stateLine = ''
+    valLine = ''
+    unitLine = ''
+    length = 20
+    for state,unit,val in summaryData:
+        stateLine += (state + ' '*(length-len(state)))
+        valLine += (str(val)+' '*(length-len(str(val))))
+        unitLine += (unit + ' '*(length-len(unit)))
+    
+    
+    with open('./results/summary.dat','w') as summary:
+        for line in [headLine,stateLine,unitLine,valLine]:
+            summary.write(line+'\n')
+
+
 
 def writeEvents():
-    '''Create an events file. Init, Middle, Final states for now. '''
+    '''Create an events file. Init, Final states for now. '''
     import numpy as np
     with open('./results/trajectory.txt','r') as myfile:
         head = [next(myfile) for x in xrange(3)]
@@ -17,14 +35,6 @@ def writeEvents():
                 events.write('{0:^19.4f}'.format(val))
             events.write('\n')
     
-# def createMCData(archive, savePath):
-    # ''' Convert txt files in archives into dictionary for use in MCP'''
-    # print "Determining work directories."
-    # workDirs = [os.path.join(archive, d) for d in os.listdir(archive) if ('work.' in d)]
-    # nCases = len(workDirs)
-    # print "Found {0} samples.".format(str(nCases))
-
-    # return
 
 
 
