@@ -71,14 +71,17 @@ class Planet:
             
     def range(self,lon0,lat0,heading0,lonc,latc,km=False):
         '''Computes the downrange and crossrange between two lat/lon pairs with a given initial heading.'''
-        from numpy import arccos, arcsin, sin, cos, pi, nan_to_num
+        from numpy import arccos, arcsin, sin, cos, pi, nan_to_num, zeros_like
         
         LF = arccos(sin(latc)*sin(lat0)+cos(latc)*cos(lat0)*cos(lonc-lon0))
-        sig = arcsin(sin(lonc-lon0)*cos(latc)/sin(LF))
+        if LF < 1e-5:
+            sig = zeros_like(lonc)
+        else:
+            sig = arcsin(sin(lonc-lon0)*cos(latc)/sin(LF))
         zeta = sig+heading0-pi/2.
         
         DR = nan_to_num(self.radius*arccos(cos(LF)/cos(arcsin(sin(LF)*sin(zeta)))))
-        CR = nan_to_num(-self.radius*arcsin(sin(LF)*sin(zeta)))
+        CR = nan_to_num(self.radius*arcsin(sin(LF)*sin(zeta)))
         if km:
             return DR/1000., CR/1000.
         else:
