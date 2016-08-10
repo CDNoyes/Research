@@ -5,23 +5,34 @@ from scipy.interpolate import interp1d
 
 from Utils.redirect import stdout_redirected
 from Utils.loggingUtils import loggingInit,loggingFinish
-import Utils.perturbUtils as perturb
 loggingInit() # Has to be called before any perturbations are pulled, i.e. before Entry equations
 
 from EntryGuidance.EntryEquations import Entry
+from EntryGuidance.Planet import Planet
+from EntryGuidance.EntryVehicle import EntryVehicle
+from EntryGuidance.Triggers import BiasDeployParachute, DeployParachute, findTriggerPoint
 from EntryGuidance.HighElevationPlanner import Optimize
-from EntryGuidance.Triggers import BiasDeployParachute,DeployParachute, findTriggerPoint
 #Consider using an fsm
+import chaospy as cp
 
-entry = Entry()
+CD = cp.Uniform(-0.10, 0.10) #CD
+CL = cp.Uniform(-0.10, 0.10) #CL
+rho0 = cp.Normal(0, 0.0333) # rho0
+scaleHeight = cp.Uniform(-0.05,0.05) # scaleheight
+pdf = cp.J(CD,CL,rho0,scaleHeight)
+print pdf.sample(5).T
+
+entry = Entry(PlanetModel = Planet(), VehicleModel = EntryVehicle())
 r0, theta0, phi0, v0, gamma0, psi0,s0 = (3540.0e3, np.radians(-90.07), np.radians(-43.90),
                                       5505.0, np.radians(-14.15), np.radians(4.99), 780e3)
-x0 = np.array([r0+perturb.getVar('altitude'), theta0+perturb.getVar('longitude'), phi0+perturb.getVar('latitude'), v0, gamma0, psi0, s0])
+x0 = np.array([r0, theta0, phi0, v0, gamma0, psi0, s0])
 time = np.linspace(0,500,1500)
 
 n = 2
-hep,ts = Optimize(x0,n)
-ts = np.hstack((np.zeros(3-n),ts))
+# hep,ts = Optimize(x0,n)
+hep = lambda x,t: 0
+ts = np.zeros(3)
+# ts = np.hstack((np.zeros(3-n),ts))
 
 with stdout_redirected():    
     X = odeint(entry.dynamics(hep), x0, time, mxstep = 100)

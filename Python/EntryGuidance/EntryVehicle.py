@@ -1,13 +1,13 @@
 class EntryVehicle:
-    def __init__(self, mass = 2804.0, area = 15.8):
+    def __init__(self, mass = 2804.0, area = 15.8, CD = 0, CL = 0):
         self.mass = mass
         self.area = area
-        import sys
-        from os import path
-        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-        import Utils.perturbUtils as perturb
-        self.CD = perturb.getVar('CD')
-        self.CL = perturb.getVar('CL')
+        # import sys
+        # from os import path
+        # sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        # import Utils.perturbUtils as perturb
+        self.CD = CD
+        self.CL = CL
 
         
     def aerodynamic_coefficients(self, M):

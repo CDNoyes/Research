@@ -64,25 +64,16 @@ class Entry:
     def __entry_vinhs(self, x, t, control_fun):
         r,theta,phi,v,gamma,psi,s = x
         
-        g = self.planet.mu/r**2
-        h = r - self.planet.radius
-        rho,a = self.planet.atmosphere(h)
-        M = v/a
-        cD,cL = self.vehicle.aerodynamic_coefficients(M)
-        f = 0.5*rho*self.vehicle.area*v**2/self.vehicle.mass
-        L = f*cL
-        D = f*cD
-        sigma = control_fun(x,t)
-        
-        dh = v*sin(gamma)
-        dtheta = v*cos(gamma)*cos(psi)/r/cos(phi)
-        dphi = v*cos(gamma)*sin(psi)/r
-        dv = -D - g*sin(gamma)
-        dgamma = L*cos(sigma)/v + cos(gamma)*(v/r - g/v) + 2*self.planet.omega*cos(psi)*cos(phi)
-        dpsi = -L*sin(sigma)/v/cos(gamma) - v*cos(gamma)*cos(psi)*tan(phi)/r + 2*self.planet.omega(tan(gamma)*cos(phi)*sin(psi)-sin(phi))
-        ds = -v/r*self.planet.radius*cos(gamma)
+        #Coriolis contributions to derivatives:
+        dh = 0
+        dtheta = 0
+        dphi = 0
+        dv = 0
+        dgamma = 2*self.planet.omega*cos(psi)*cos(phi)
+        dpsi =  2*self.planet.omega(tan(gamma)*cos(phi)*sin(psi)-sin(phi))
+        ds = 0
 
-        return np.array([dh, dtheta, dphi, dv, dgamma, dpsi,ds])
+        return self.__entry_3dof(x, t, control_fun) + np.array([dh, dtheta, dphi, dv, dgamma, dpsi,ds])
         
     #2DOF, Longitudinal Model
     def __entry_2dof(self, x, t, control_fun):

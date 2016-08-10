@@ -6,8 +6,8 @@ def createResultsDir():
         os.mkdir('./results/')
 
 def loggingInit():
-    from perturbUtils import inputLogInit
-    inputLogInit()
+    # from perturbUtils import inputLogInit
+    # inputLogInit()
     createResultsDir()
 
     return
@@ -15,9 +15,10 @@ def loggingInit():
 def loggingFinish(states,units,data,summary):
     import numpy as np
     from dataUtils import writeEvents, writeSummary
-    from perturbUtils import writeInputLog
-    writeInputLog()
-    writeSummary(summary)
+    # from perturbUtils import writeInputLog
+    # writeInputLog()
+    if summary is not None:
+        writeSummary(summary)
     fmt = '%-19.4f'
     with file('./results/trajectory.txt','w') as result:
         

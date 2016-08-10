@@ -1,6 +1,0 @@
-#!/bin/csh
-#PBS -l select=8:ncpus=16:mpiprocs=8 -l place=scatter:excl
-#PBS -l walltime=192:00:00
-
-cd $PBS_O_WORKDIR
-run_dakota_protocol

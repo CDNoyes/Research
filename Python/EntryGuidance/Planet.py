@@ -2,11 +2,11 @@ from math import exp
 
 
 class Planet:
-    def __init__(self, name = 'Mars'):
-        import sys
-        from os import path
-        sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
-        import Utils.perturbUtils as perturb
+    def __init__(self, name = 'Mars', rho0 = 0, scaleHeight = 0):
+        # import sys
+        # from os import path
+        # sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+        # import Utils.perturbUtils as perturb
         
         self.name = name.capitalize()
         
@@ -29,8 +29,8 @@ class Planet:
             self.radius = 3397e3    
             self.omega = 7.095e-5     
             self.mu = 4.2830e13
-            self.rho0 = perturb.getVar('density0')
-            self.scaleHeight = perturb.getVar('densitySH')
+            self.rho0 = (1+rho0)*0.0158
+            self.scaleHeight = (1+scaleHeight)*9345.5
         
         elif self.name == 'Saturn':
             self.radius = float('nan')    

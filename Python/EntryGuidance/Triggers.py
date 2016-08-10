@@ -85,7 +85,7 @@ def DeployParachuteTest():
     
 def findTriggerPoint(x,t):
     import numpy as np
-    idxMin = np.max(x[:,3])+5 # Velocity is monotonically decreasing from this point onward
+    idxMin = np.argmax(x[:,3])+5 # Velocity is monotonically decreasing from this point onward
     try:
         idx = np.where(np.diff(x[idxMin:,3])==0)[0][0] + idxMin # This should work in well-behaved cases
     except:

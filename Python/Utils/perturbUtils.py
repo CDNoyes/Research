@@ -1,9 +1,6 @@
 import imuQ
 from numpy.linalg import norm
 
-db = imuQ.Project.loadDB()
-unitSystem = 'SI'
-
 global inputLog
        
 def getVar(name):
