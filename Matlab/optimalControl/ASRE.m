@@ -34,8 +34,8 @@ function sol = ASRE(x0,tf,A,B,C,Q,R,F,z)
 % n = OCP.dimension.state;
 % m = OCP.dimension.control;
 
-interpType = 'cubic'; %nearest, linear, cubic, spline
-nPoints = 1000; % Very little impact on solution quality
+interpType = 'pchip'; %nearest, linear, cubic, spline
+nPoints = 500; % Very little impact on solution quality
 t = linspace(0,tf,nPoints);
 tb = tf - t;
 
@@ -73,6 +73,7 @@ tracking = false;
 fixedFS = false; % Any endpoint constraints?
 if nargin < 9 || isempty(z)
     disp('Problem Type: Regulation')
+    z = @(t) 0;
 elseif ~isa(z,'function_handle')
     z = z(:);
     fixedFS = true;
@@ -88,7 +89,7 @@ end
 
 m = size(R(x0),1);
 iter = 0;
-iterMax = 10;
+iterMax = 20;
 tol = 0.01; 
 diff = tol+1;
 
@@ -236,7 +237,7 @@ while iter < iterMax && diff > tol
                 @(T) interp1(tb,s,T,interpType)');
             
             % Compute the controls
-            u{iter+1} = computeControl(B,R,Pvec,x{iter}',u{iter},s');
+            u{iter+1} = computeControl(B,R,Pvec,x{iter+1}',u{iter},s');
         end
         
         % Compute the convergence criteria
@@ -250,12 +251,15 @@ end
 if (iter == iterMax) && diff > tol
     fprintf(['ASRE failed to converge in ',num2str(iterMax),' iterations.\n',...
         'Consider raising the maximum number of iterations or\ndecreasing',...
-        ' the convergence tolerance (currently set to ',num2str(tol),').\n'])
+        ' the convergence tolerance (currently set to ',num2str(tol),').\n',...
+        'Current value: ',num2str(diff),'.\n'])
 end
-
-J = computeCost(t, @(T) interp1(t,x{iter},T,interpType)',...
-                @(T) interp1(t,u{iter},T,interpType),Q,R,F,C,z);
-            
+if fixedFS
+   z = @(t) 0; 
+   c = C(x{iter}(end,:));
+   C = @(x) diag(c);
+end
+J = computeCost(t, @(T) interp1(t,x{iter},T,interpType)', @(T) interp1(t,u{iter},T,interpType),Q,R,F,C,z);
 disp(['ASRE Cost: ',num2str(J)])
 
 for i = nPoints:-1:1 
