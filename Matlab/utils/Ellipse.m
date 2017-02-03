@@ -6,7 +6,9 @@
 
 function Ellipse(x_center,a,b,theta,LineSpecs)
 if nargin < 5 || isempty(LineSpecs)
-    LineSpecs = 'b';
+    LineSpecs = {'k'};
+elseif ~iscell(LineSpecs)    
+    LineSpecs = {LineSpecs};
 end
 
 x_center = x_center(:);
@@ -17,5 +19,5 @@ R = [cos(theta) -sin(theta)
     sin(theta) cos(theta)];
 XY = (R*[x;y] + repmat(x_center,1,length(t)))';
 
-plot(XY(:,1),XY(:,2),LineSpecs)
+plot(XY(:,1),XY(:,2),LineSpecs{:})
 end
