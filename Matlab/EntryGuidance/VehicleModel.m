@@ -9,5 +9,6 @@ function VM = VehicleModel()
 VM.area = 15.8; % reference wing area, m^2
 VM.mass = 2804; % mass, kg
 VM.aerodynamics = @AerodynamicCoefficients;
-
+VM.thrust = VM.mass*3.71*10; % T/W of 10 at ignition on Mars
+VM.v_exit = 295*9.81; % Exit velocity
 end
