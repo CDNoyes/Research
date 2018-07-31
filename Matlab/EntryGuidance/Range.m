@@ -18,7 +18,7 @@ d13 = acos(sin(latc).*sin(lat0)+cos(latc).*cos(lat0).*cos(lonc-lon0));
     psi13 = pi/2 - PHI;
     CR = asin(sin(d13).*sin(psi12-psi13));
     DR = r_p*acos(cos(d13)./cos(CR));
-    CR = -r_p*CR;
+    CR = r_p*CR;
     
 % end
 end
