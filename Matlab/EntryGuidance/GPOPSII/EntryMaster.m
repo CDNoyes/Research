@@ -1,10 +1,13 @@
 %% GPOPSII, 3DOF Optimal Solution
 clear; clc; close all;
+[lineSpecs,textSpecs,figSpecs] = PlotSpecs();
 
 dtr = pi/180;
 
-DR = linspace(740,1030,20);
-DR = 850;
+% DR = linspace(740,1030,20);
+% DR = 885;
+DR = 815;
+
 for i = 1:length(DR)
 
 % System Models:
@@ -43,10 +46,11 @@ bounds.phase.finaltime.upper = tfu;
 lb = [mars.radiusEquatorial+0e3
     -pi/2
     -pi/2
-    0
+    300
     -45*pi/180 %-25 degrees, FPA
     -pi/2      % Heading
     -pi/2]';   % Bank angle
+
 ub = [x0(1)+100
     pi
     pi/2
@@ -54,16 +58,20 @@ ub = [x0(1)+100
     15*dtr %5 degrees
     pi
     pi/2]';
+
 tol = 0*dtr;
+heading_max = 5.5 * dtr;
+fpa_min = -25 * dtr;
+vel_max = 470;
 if 1 % Fixed lat/lon
-    xfl = [lb(1), target.lon, target.lat, lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1), target.lon, target.lat, 470, ub(5), ub(6), ub(7)];
+    xfl = [lb(1), target.lon, target.lat, lb(4), fpa_min, -heading_max, lb(7)];
+    xfu = [ub(1), target.lon, target.lat, vel_max, ub(5), heading_max, ub(7)];
 elseif 0 % Fixed lon i.e. downrange
     xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6), lb(7)];
     xfu = [ub(1), target.lon, ub(3), 470, ub(5), ub(6), ub(7)];
 elseif 0 % Fixed lat i.e. crossrange
     xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1:2), target.lat, 470, ub(5), ub(6), ub(7)];    
+    xfu = [ub(1:2), target.lat, vel_max, ub(5), ub(6), ub(7)];    
 else % Free lat/lon
     xfl = lb;
     xfu = [ub(1), ub(2:3), 470, ub(5), ub(6), ub(7)]; 
@@ -108,7 +116,7 @@ setup.derivatives.derivativelevel = 'first';
 setup.scales.method = 'automatic-bounds';
 setup.method = 'RPM-Differentiation';
 setup.mesh.method = 'hp-PattersonRao';
-setup.mesh.tolerance = 1e-3; % default 1e-3
+setup.mesh.tolerance = 1e-6; % default 1e-3
 setup.mesh.colpointsmin = 3;
 setup.mesh.colpointsmax = 10;
 setup.mesh.maxiterations = 20;
@@ -121,29 +129,35 @@ solutions{i} = Sol;
 end
 traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),target.DR,target.CR);
 EntryPlots(traj)
-
-p = polyfit(traj.energy_norm',traj.D,5);
-D_ = polyval(p,linspace(0,1));
 figure
-plot(traj.energy_norm,traj.D)
-hold on
-plot(linspace(0,1),D_);
-
-vsplit = 2700;
-vi = traj.state(:,4) < 5400;
-vii = traj.state(:,4) > vsplit;
-vi = vi & vii;
-vj = traj.state(:,4) <= vsplit;
-sf = 500;
-pi = polyfit(traj.state(vi,4)'/sf,traj.D(vi),4);
-pj = polyfit(traj.state(vj,4)'/sf,traj.D(vj),7);
-Di = polyval(pi,linspace(vsplit,5400)/sf);
-Dj = polyval(pj,linspace(470,vsplit)/sf);
-figure
-plot(traj.state(:,4),traj.D)
-hold on
-plot(linspace(vsplit,5400),Di);
-plot(linspace(470,vsplit),Dj);
+grid on
+box on
+set(gcf,'name','Bank Rate', figSpecs{:})
+plot(Sol.time, Sol.control/dtr)
+ylabel('Bank Rate (deg/s)', textSpecs{:})
+xlabel('Time (s)', textSpecs{:})
+% p = polyfit(traj.energy_norm',traj.D,5);
+% D_ = polyval(p,linspace(0,1));
+% figure
+% plot(traj.energy_norm,traj.D)
+% hold on
+% plot(linspace(0,1),D_);
+% 
+% vsplit = 2700;
+% vi = traj.state(:,4) < 5400;
+% vii = traj.state(:,4) > vsplit;
+% vi = vi & vii;
+% vj = traj.state(:,4) <= vsplit;
+% sf = 500;
+% pi = polyfit(traj.state(vi,4)'/sf,traj.D(vi),4);
+% pj = polyfit(traj.state(vj,4)'/sf,traj.D(vj),7);
+% Di = polyval(pi,linspace(vsplit,5400)/sf);
+% Dj = polyval(pj,linspace(470,vsplit)/sf);
+% figure
+% plot(traj.state(:,4),traj.D)
+% hold on
+% plot(linspace(vsplit,5400),Di);
+% plot(linspace(470,vsplit),Dj);
 
 % vd = traj.D > 1;
 % p = polyfit(traj.DR(vd)'/1000, traj.D(vd),2);
@@ -177,7 +191,7 @@ dtr = pi/180;
 nPhases = 4;
 auxdata.nPhases = nPhases;
 % DR = linspace(740,1030,20);
-DR = 900;
+DR = 850;
 for i = 1:length(DR)
 
 % System Models:
@@ -205,23 +219,23 @@ auxdata.delta.CD = 0;
 % Bounds
 t0 = 0;
 tfl = 0;
-tfu = 700;
+tfu = 400;
 
 
 
-lb = [mars.radiusEquatorial+8e3
-    0
-    0
+lb = [mars.radiusEquatorial+6e3
+    -pi/2
+    -pi/2
     0
     -45*pi/180 %-25 degrees, FPA
     -pi/2      % Heading
-    ]';   % Bank angle
+    ]';   
 ub = [x0(1)+100
     pi
-    pi
+    pi/2
     x0(4)+500
     15*dtr %5 degrees
-    pi
+    pi/2
     ]';
 
 if 0 % Fixed lat/lon
@@ -230,7 +244,7 @@ if 0 % Fixed lat/lon
 elseif 0 % Fixed lon i.e. downrange
     xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6)];
     xfu = [ub(1), target.lon, ub(3), 440, ub(5), ub(6)];
-elseif 0 % Fixed lat i.e. crossrange
+elseif 1 % Fixed lat i.e. crossrange
     xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6)];
     xfu = [ub(1:2), target.lat, 440, ub(5), ub(6)];    
 else % Free lat/lon
@@ -258,8 +272,8 @@ bounds.phase(1).initialstate.lower =[x0];
 bounds.phase(1).initialstate.upper = [x0];
 bounds.phase(nPhases).finalstate.lower = [xfl];
 bounds.phase(nPhases).finalstate.upper = [xfu];
-bounds.parameter.lower = [0,60,150];
-bounds.parameter.upper = [60,150,350];
+bounds.parameter.lower = [0,0,0];
+bounds.parameter.upper = [90,150,350];
 
 % Initial Guess
 guess.phase(1).time = [0;50];
@@ -274,6 +288,14 @@ guess.phase(2).state = [a*x0+b*0.5*(xfu+xfl);c*x0+d*0.5*(xfu+xfl)];
 a = 0.2;b=1-a;
 guess.phase(3).state = [c*x0+d*0.5*(xfu+xfl);a*x0+b*0.5*(xfu+xfl)];
 guess.phase(4).state = [a*x0+b*0.5*(xfu+xfl);0.5*(xfu+xfl)];
+xf_guess = [mars.radiusEquatorial+6e3, target.lon,target.lat,470,-0.26,0];
+
+for j = 1:6
+    sol_guess(1:5,j) = linspace(x0(j),xf_guess(j),5);
+end
+for j = 1:nPhases
+    guess.phase(j).state = sol_guess(j:j+1,:);
+end
 
 guess.parameter = [50, 120, 160];
 
@@ -292,7 +314,7 @@ else
     setup.guess = guess;
 end
 setup.nlp.solver = 'snopt';
-setup.derivatives.supplier = 'sparseFD';
+setup.derivatives.supplier = 'sparseCD';
 setup.derivatives.dependencies = 'sparse';
 setup.derivatives.derivativelevel = 'first';
 setup.scales.method = 'automatic-bounds';

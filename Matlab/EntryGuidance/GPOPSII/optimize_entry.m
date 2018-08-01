@@ -2,7 +2,7 @@ function traj = optimize_entry(DR, CR, fpa_min, heading_max)
 
 dtr = pi/180;
 
-% DR = 900;
+% DR = 830;
 
 % System Models:
 mars = Mars();
@@ -11,11 +11,47 @@ vm = VehicleModel();
 % Initial states:
 %[radius long lat velocity fpa heading]
 x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.15*dtr; 0*dtr]';
+if 0
+    x0 = [3522.2e3; 126.72*dtr; -3.9186*dtr; 6083.3; -15.48*dtr; 93.2065*dtr]'; % MSL Inertial
+    [X,Y,Z] = sph2cart(x0(2),x0(3),x0(1));
+    % [VX,VY,VZ] = sph2cart(pi/2-x0(6),x0(5),x0(4));
+    % Vi2 = [VX,VY,VZ];
+    
+    Vz = x0(4)*sin(x0(6));
+    Vx = x0(4)*cos(x0(6))*cos(x0(5));
+    Vy = x0(4)*cos(x0(6))*sin(x0(5));
+    Vi = [Vx,Vy,Vz];
+    
+    R = [X,Y,Z];
+    omega = [0,0,mars.omega];
+    q = [0.0018, .4011, .4059, -0.8212]; % from PCI to Body
+%     qbf = [.9319, .1676, .2706, 0.1739]; % from PCI to PCR
+    Vr = quatrotate(q, Vi) - cross(omega, R);
+    % Ri = quatrotate(quatinv(q),R);
+    fpa = pi/2 - acos( dot(Vr,R)/norm(Vr)/norm(R) );
+    east = cross([0,0,1],R);
+    rhat = R/norm(R);
+    vhat = Vr/norm(Vr);
+    
+    Vp = vhat - dot(vhat,rhat)*rhat; % Project onto x-y plane
+    % heading = acos( dot(Vp, east)/norm(Vp)/norm(east) );
+    
+    
+    heading = -3.1811*pi/180; % This is roughly what it should be
+%     x0(2) = 0;
+%     x0(3) = 0;
+    x0(4) = norm(Vr);
+    x0(5) = fpa;
+    x0(6) =  heading;
+    lat_target = -4.5895 * pi/180;
+    lon_target = 137.4417 * pi/180;
+    [DR,CR] = Range(lon_target, lat_target, heading, x0(2), x0(3));
+end
 
 % Target info:
 target.DR = DR;
 target.CR = CR;
-[target.lon,target.lat] = FinalLatLon(x0(2),x0(3),x0(6),target.DR,target.CR);
+[target.lon,target.lat] = FinalLatLon(x0(2), x0(3), x0(6),target.DR,target.CR);
 
 % auxdata.ref = ref;
 auxdata.target = target;
@@ -66,11 +102,11 @@ elseif 0 % Fixed lon i.e. downrange
     
 elseif 0 % Fixed lat i.e. crossrange
     xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1:2), target.lat, 470, ub(5), ub(6), ub(7)];   
+    xfu = [ub(1:2), target.lat, 470, ub(5), ub(6), ub(7)];
     
 else % Free lat/lon
     xfl = lb;
-    xfu = [ub(1), ub(2:3), 470, ub(5), ub(6), ub(7)]; 
+    xfu = [ub(1), ub(2:3), 470, ub(5), ub(6), ub(7)];
 end
 bounds.phase.initialstate.lower =[x0, lb(7)];
 bounds.phase.initialstate.upper = [x0, ub(7)];
@@ -118,6 +154,6 @@ sol = gpops2(setup);
 Sol = sol.result.solution.phase;
 
 traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),target.DR,target.CR);
-traj.sigma_dot = Sol.control; % left in radians 
+traj.sigma_dot = Sol.control; % left in radians
 
 end

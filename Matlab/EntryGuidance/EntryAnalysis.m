@@ -16,7 +16,8 @@ r_eq = planet.radiusEquatorial;
 hkm = (x(:,1)-r_eq)/1000;
 [DR,CR] = Range(x(1,2),x(1,3),x(1,6),x(:,2),x(:,3));
 tf = findTrajLength(t,x);
-
+disp(' ')
+disp('--------------------------------------------------------------------')
 disp(['Trajectory Duration: ',num2str(tf), ' s'])
 disp(['Final altitude:      ',num2str(hkm(end)), ' km'])
 disp(['Final FPA:           ',num2str(x(end,5)/dtr), ' deg'])

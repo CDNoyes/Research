@@ -37,6 +37,8 @@ dpsi = lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi
 
 output.dynamics = [dr dtheta dphi dv dgamma dpsi dSigma];
 output.integrand = zeros(size(r));
+% output.integrand = (abs(Sigma)-pi/4).^2 ./(1+input.phase.time);
+
 
 end
 

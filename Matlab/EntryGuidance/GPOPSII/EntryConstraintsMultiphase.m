@@ -1,4 +1,4 @@
-function output = EntryConstraintsMultiPhase( input )
+function output = EntryConstraintsMultiphase( input )
 
 S       = input.auxdata.vehicle.area;
 m       = input.auxdata.vehicle.mass;
@@ -40,7 +40,7 @@ for iphase = 1:input.auxdata.nPhases
     dpsi = -lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
     
     output(iphase).dynamics = [dr dtheta dphi dv dgamma dpsi];
-    
+%     output(iphase).integrand = zeros(size(r));
 end
 
 end

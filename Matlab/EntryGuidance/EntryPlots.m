@@ -80,12 +80,12 @@ set(gcf,'name','Downrange vs Crossrange', figSpecs{:})
 %Lat/Lon
 n = n+1;
 figure(n)
-plot(x(1,3)/dtr,x(1,2)/dtr,'ko' )
+plot(x(1,2)/dtr,x(1,3)/dtr,'ko' )
 hold on
-plot(ts.target.lat/dtr,ts.target.lon/dtr,'kx' )
-plot(x(:,3)/dtr,x(:,2)/dtr, lineSpecs{:})
-xlabel('Latitude (deg)',textSpecs{:})
-ylabel('Longitude (deg)',textSpecs{:})
+plot(ts.target.lon/dtr,ts.target.lat/dtr,'kx' )
+plot(x(:,2)/dtr,x(:,3)/dtr, lineSpecs{:})
+ylabel('Latitude (deg)',textSpecs{:})
+xlabel('Longitude (deg)',textSpecs{:})
 title('Ground Track', textSpecs{:})
 legend('Initial point','Target','Location','Best')
 grid on
