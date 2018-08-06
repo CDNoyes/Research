@@ -65,8 +65,8 @@ auxdata.delta.CD = 0;
 
 % Bounds
 t0 = 0;
-tfl = 0;
-tfu = 700;
+tfl = 1;
+tfu = 500;
 
 bounds.phase.initialtime.lower = t0;
 bounds.phase.initialtime.upper = t0;
@@ -85,7 +85,7 @@ ub = [x0(1)+100
     pi
     pi/2
     x0(4)+500
-    -1*dtr % FPA constraint degrees
+    10*dtr % FPA constraint degrees
     pi
     pi/2]';
 

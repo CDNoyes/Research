@@ -77,8 +77,7 @@ for N = [0]
             pi
             pi/2]';
         
-        % heading_max = 25. * dtr;
-        % fpa_min = -14.5 * dtr;
+
         vel_max = 470;
         
         if iter > 3% Fixed lon i.e. downrange
