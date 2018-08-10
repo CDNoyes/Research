@@ -19,7 +19,7 @@ auxdata.dimension.parameter = 0;
 auxdata.delta.CD = 0;
 % Initial states:
 %[radius long lat velocity fpa heading]
-for N = [0]
+for N = [ 550, 600, 675, 800, 1000] % 400
     switch N
         case 0
             x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.15*dtr; 0*dtr]';
@@ -42,11 +42,11 @@ for N = [0]
     
     sols = {};
     
-    for iter = 1:(Nper+3)
+    for iter = 1:(Nper+4)
         % Target info:
-        if iter > 3
+        if iter > 4
             lons = linspace(sols{2}.state(end,2), sols{3}.state(end,2)*0.99, Nper);
-            target_lon = lons(iter-3);
+            target_lon = lons(iter-4);
         end
         
         
@@ -80,21 +80,23 @@ for N = [0]
 
         vel_max = 470;
         
-        if iter > 3% Fixed lon i.e. downrange
-            xfl = [lb(1), target_lon, lb(3), lb(4), lb(5), lb(6), lb(7)];
-            xfu = [ub(1), target_lon, ub(3), vel_max, ub(5), ub(6), ub(7)];
+        
             
-        elseif iter == 1
+        if iter == 1 || iter == 4 % Zero crossrange 
             xfl = [lb(1), lb(2), lb(3)*0, lb(4), lb(5), lb(6), lb(7)];
             xfu = [ub(1), ub(2), ub(3)*0, vel_max, ub(5), ub(6), ub(7)];
+            
+        elseif iter > 4% Fixed lon i.e. downrange
+            xfl = [lb(1), target_lon, lb(3), lb(4), lb(5), lb(6), lb(7)];
+            xfu = [ub(1), target_lon, ub(3), vel_max, ub(5), ub(6), ub(7)];    
             
         else % Free lat/lon
             xfl = lb;
             xfu = [ub(1), ub(2:3), vel_max, ub(5), ub(6), ub(7)];
         end
         
-        bounds.phase.initialstate.lower =[x0, lb(7)];
-        bounds.phase.initialstate.upper = [x0, ub(7)];
+        bounds.phase.initialstate.lower =[x0, lb(7)*0];
+        bounds.phase.initialstate.upper = [x0, ub(7)*0];
         bounds.phase.state.lower = [lb];
         bounds.phase.state.upper = [ub];
         bounds.phase.finalstate.lower = [xfl];
@@ -120,7 +122,7 @@ for N = [0]
         setup.functions.continuous = @EntryConstraints;
         if iter == 1 || iter == 2
             setup.functions.endpoint = @MinDR;
-        elseif iter == 3
+        elseif iter == 3 || iter == 4
             setup.functions.endpoint = @MaxDR;
         else
             setup.functions.endpoint = @MaxCR;

@@ -2,8 +2,6 @@ function traj = optimize_entry(DR, CR, fpa_min, heading_max)
 
 dtr = pi/180;
 
-% DR = 830;
-
 % System Models:
 mars = Mars();
 vm = VehicleModel();
@@ -11,6 +9,7 @@ vm = VehicleModel();
 % Initial states:
 %[radius long lat velocity fpa heading]
 x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.15*dtr; 0*dtr]';
+
 if 0
     x0 = [3522.2e3; 126.72*dtr; -3.9186*dtr; 6083.3; -15.48*dtr; 93.2065*dtr]'; % MSL Inertial
     [X,Y,Z] = sph2cart(x0(2),x0(3),x0(1));
@@ -142,7 +141,7 @@ setup.guess = guess;
 setup.nlp.solver = 'snopt';
 setup.derivatives.supplier = 'sparseCD';
 setup.derivatives.derivativelevel = 'first';
-setup.scales.method = 'automatic-bounds';
+setup.scales.method = 'automatic-guessUpdate';
 setup.method = 'RPM-Differentiation';
 setup.mesh.method = 'hp-PattersonRao';
 setup.mesh.tolerance = 1e-6; % default 1e-3

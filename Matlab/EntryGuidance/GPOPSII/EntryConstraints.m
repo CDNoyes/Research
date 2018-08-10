@@ -33,7 +33,7 @@ dtheta = v.*cos(gamma).*cos(psi)./(r.*cos(phi));
 dphi = v.*cos(gamma).*sin(psi)./r;
 dv = -drag - g.*sin(gamma);
 dgamma = lift.*cos(Sigma)./v - (g./v - v./r).*cos(gamma);
-dpsi = lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
+dpsi = -lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
 
 output.dynamics = [dr dtheta dphi dv dgamma dpsi dSigma];
 output.integrand = zeros(size(r));
