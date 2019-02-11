@@ -5,11 +5,11 @@ function sol = pd1d()
 output = SolveOCP();
 
 sol = output.result.solution.phase(1);
-% save(['./data/srp_z',num2str(int16(x0(3))),'.mat'], 'sol');
+k = 5.5; % this needs to match what's used in the dynamics 
 
 if 1
-    mass = sol.state(:, 3); %getMass(sol);
-    H = Hamiltonian(sol.state, sol.costate, sol.control);
+    mass = sol.state(:, 3); 
+    H = Hamiltonian(sol.state, sol.costate, sol.control, k);
     x = sol.state;
     sol.state(:,1:2) = sol.state(:,1:2)*4000/1050;
     
@@ -62,6 +62,20 @@ if 1
     set(gcf,'name','H','numbertitle','off')
     set(gcf,'WindowStyle','docked')
     
+    p = sol.costate;
+    u = sol.control;
+    u(abs(u)<1e-3) = 0;
+    s = sign(u);
+    S = (1 - p(:,3)*k).*s + p(:,2)*1050./sol.state(:,3);
+    s(s==0)=-1;
+    Sneg = s.* ((1 - p(:,3)*k).*s + p(:,2)*1050./sol.state(:,3));
+    figure(9)
+    plot(sol.time, S)
+    hold all 
+    plot(sol.time, Sneg, '--')
+    legend("True","If negative thrust were used")
+    set(gcf,'name','Switch','numbertitle','off')
+    set(gcf,'WindowStyle','docked')
 end
 end
 
@@ -75,6 +89,7 @@ p = 4000;
 m0 = 1050;
 z0 = 4000*m0/p;
 v0 = -120*m0/p;
+% v0 = 10*m0/p;
 
 
 zmin = 0;
@@ -83,7 +98,7 @@ zmax = 100e3;
 vmin = -1000;
 vmax = 100;
 
-mmin = 500; % dry mass, should be set to >0
+mmin = 200; % dry mass, should be set to >0
 mmax = m0;
 
 
@@ -157,6 +172,7 @@ function output = Cost(input)
 
 % output.objective = -input.phase(1).finalstate(3);
 output.objective = input.phase(1).integral;
+% output.objective = input.phase(1).integral - input.phase(1).finalstate(3)/4;
 
 end
 
@@ -171,8 +187,8 @@ t = input.phase(1).time;
 s1 = input.phase(1).state;
 control1 = input.phase(1).control;
 
-% k = -0.5;
-k = 0;
+k = -5.5;
+% k = 0;
 
 % Variables
 z     = s1(:,1);
@@ -200,7 +216,7 @@ output(1).integrand = abs(u);
 
 end
 
-function H = Hamiltonian(x, p, u)
+function H = Hamiltonian(x, p, u, k)
 
-H = abs(u) + p(:,1).*x(:,2) + p(:,2).*(u-1.62*1050/4000);
+H = abs(u) + p(:,1).*x(:,2) + p(:,2).*(1050./x(:,3).*u-1.62*1050/4000) - p(:,3).*k.*abs(u);
 end
