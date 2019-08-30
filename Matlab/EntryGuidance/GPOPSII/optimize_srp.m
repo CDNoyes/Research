@@ -1,11 +1,14 @@
-function sol = optimize_srp(x0)
+function sol = optimize_srp(x0, tf)
 % Computes the optimal solution to SRP problems treating thrust
 % magnitude and unit vector as the control variables
+
+% Set tf = 0 to free the final time, otherwise it will be fixed 
+
 x0 = cell2mat(x0);
 % load('E:\Documents\GitHub\Research\Matlab\data\srp_z3200.mat')
 % guess.phase = sol;
-% output = SolveOCP(x0, guess);
-output = SolveOCP(x0);
+% output = SolveOCP(x0, tf, guess);
+output = SolveOCP(x0, tf, []);
 
 sol = output.result.solution.phase(1);
 % save(['./data/srp_z',num2str(int16(x0(3))),'.mat'], 'sol');
@@ -17,9 +20,9 @@ if 0
     [pitch,azimuth] = getAnglesFromUnitVector(sol.control(:,2:4));
     pitch = pitch*180/pi;
     azimuth = azimuth*180/pi;
-
+    
     disp(['Prop used: ',num2str(mass(1)-mass(end)), ' kg.'])
-
+    
     % Plots
     figure(1)
     plot(sol.time,sol.state(:,1:3))
@@ -27,14 +30,14 @@ if 0
     title('Positions')
     set(gcf,'name','Position vs Time','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(2)
     plot(sol.time,sol.state(:,4:6))
     legend('u','v','w')
     title('Velocities')
     set(gcf,'name','Velocity vs Time','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(3)
     plot(sol.time,sol.control(:,2:4))
     hold all
@@ -43,7 +46,7 @@ if 0
     title('Control Directions')
     set(gcf,'name','Control dirs vs Time','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(4)
     legText = {'T'};
     plot(sol.time,sol.control(:,1))
@@ -58,32 +61,32 @@ if 0
     title('Thrust Magnitude (N)')
     set(gcf,'name','Thrust Arcs','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(5)
     plot(sol.time, mass)
     title('Mass vs Time')
     set(gcf,'name','Mass','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(6)
     plot(sol.time,sol.control(:,1)./mass)
     title('Thrust Acceleration (m/s^2)')
     set(gcf,'name','Thrust Acceleration','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(7)
     plot(sol.time,sol.costate)
     legend('x','y','z','u','v','w','m','Location','best')
     title('Costates')
     set(gcf,'name','Costates','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(8)
     plot(sol.time,H)
     title('Hamiltonian')
     set(gcf,'name','Hamiltonian','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
+    
     figure(9)
     plot(sol.time,pitch)
     hold on
@@ -92,8 +95,8 @@ if 0
     title('Control Angles')
     set(gcf,'name','Control Angles','numbertitle','off')
     set(gcf,'WindowStyle','docked')
-
-
+    
+    
     figure(12)
     plot3(sol.state(:,1),sol.state(:,2),sol.state(:,3),'o-')
     hold on
@@ -105,10 +108,14 @@ if 0
 end
 end
 
-function output = SolveOCP(X, guess)
+function output = SolveOCP(X, tf, guess)
 t0 = 0;
-tmin = 16;
-tmax = 16;
+tmin = tf;
+if tf == 0
+    tmax = 40;
+else
+    tmax = tf;
+end
 
 x0 = X(1);
 y0 = X(2);
@@ -132,7 +139,7 @@ vmax = umax;
 wmin = -3e3;
 wmax = 100;
 
-mmin = 1; % dry mass, should be set to >0
+mmin = 10; % dry mass, should be set to >0
 mmax = m0;
 
 xf = 0;
@@ -144,7 +151,7 @@ wfmin = 0;
 wfmax = 0;
 
 % Thrust acceleration limits
-amin = 40*0.001;
+amin = 40;
 amax = 70;
 Tmin = amin*m0;
 Tmax = amax*m0;
@@ -176,8 +183,8 @@ bounds.phase(iphase).path.upper = 1;
 % bounds.phase(iphase).integral.upper = tmax*Tmax^2;
 
 %% Guess
-if nargin ==1 || isempty(guess)
-    guess.phase(iphase).time      = [0; 16];
+if nargin == 2 || isempty(guess)
+    guess.phase(iphase).time      = [0; 20];
     guess.phase(iphase).state     = [bounds.phase(iphase).initialstate.lower; bounds.phase(iphase).finalstate.lower];
     guess.phase(iphase).control   = [Tmax 1 0 0; Tmin 0 0 -1];
 end
