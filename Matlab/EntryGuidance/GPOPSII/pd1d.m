@@ -1,11 +1,15 @@
 function sol = pd1d()
 
-close all;
+global k
+k = 5.5; % this needs to match what's used in the dynamics
+% k = 0;
+
+% close all;
 
 output = SolveOCP();
 
 sol = output.result.solution.phase(1);
-k = 5.5; % this needs to match what's used in the dynamics
+
 
 mass = sol.state(:, 3);
 H = Hamiltonian(sol.state, sol.costate, sol.control, k);
@@ -14,10 +18,12 @@ sol.state(:,1:2) = sol.state(:,1:2)*4000/1050;
 
 
 disp(['Prop used: ',num2str(mass(1)-mass(end)), ' kg.'])
+disp(['ToF: ',num2str(sol.time(end)), ' s.'])
 
 % Plots
 figure(1)
 plot(sol.state(:,1), sol.state(:,2))
+hold all
 set(gcf,'name','Phase Portrait','numbertitle','off')
 set(gcf,'WindowStyle','docked')
 
@@ -82,7 +88,7 @@ end
 function output = SolveOCP()
 t0 = 0;
 tmin = 5;
-tmax = 260;
+tmax = 140;
 
 p = 4000;
 
@@ -137,7 +143,7 @@ bounds.phase(iphase).integral.upper = tmax*Tmax;
 guess.phase(iphase).time      = [0; 70];
 guess.phase(iphase).state     = [bounds.phase(iphase).initialstate.lower; bounds.phase(iphase).finalstate.lower];
 guess.phase(iphase).control   = [Tmax; Tmax];
-guess.phase(1).integral = tmax*tmax;
+guess.phase(1).integral = tmax*Tmax;
 
 %% NLP Parameters and Optimization Call
 setup.name = 'SRP Optimization';
@@ -159,7 +165,7 @@ setup.derivatives.derivativelevel = 'first'; % 'first' or 'second'
 setup.derivatives.dependencies = 'sparseNaN'; % 'full', 'sparse' or 'sparseNaN'
 setup.scales.method = 'automatic-guessUpdate'; % 'none' or 'automatic-bounds' or 'automatic-guess' or 'automatic-guessUpdate' or 'automatic-hybrid' or 'automatic-hybridUpdate' or 'defined'
 setup.mesh.method = 'hp-PattersonRao'; % 'hp-PattersonRao' or 'hp-DarbyRao' or 'hp-LiuRao'
-setup.mesh.tolerance = 1e-6; % Default 1e-3
+setup.mesh.tolerance = 1e-5; % Default 1e-3
 setup.mesh.maxiterations = 30; % Default 10
 setup.method = 'RPM-Differentiation'; % 'RPM-Differentiation' or 'RPM-Integration'
 setup.displaylevel = 1; % 0 = no output. 1 = only mesh refinement. 2 = NLP solver iteration output and mesh refinement
@@ -172,12 +178,11 @@ function output = Cost(input)
 
 % output.objective = -input.phase(1).finalstate(3);
 output.objective = input.phase(1).integral;
-% output.objective = input.phase(1).integral - input.phase(1).finalstate(3)/4;
-
+% output.objective = input.phase(1).finaltime; % Time optimal control 
 end
 
 function output = Dynamics(input)
-
+global k 
 
 %---------------------%
 % Dynamics in Phase 1 %
@@ -187,16 +192,11 @@ t = input.phase(1).time;
 s1 = input.phase(1).state;
 control1 = input.phase(1).control;
 
-k = -5.5;
-% k = -0.25;
-% k = 0;
-
 % Variables
 z     = s1(:,1);
 v     = s1(:,2);
 m     = s1(:,3);
 
-m0 = m(1);
 u     = control1(:,1);
 
 if k == 0
@@ -205,14 +205,12 @@ else
     aT    = 1050.*u./m;
 end
 gravity1 = 1.62*1050/4000;
-% gravity1 = 0.9;
-
 
 
 % EOM
 zdot = v;
 vdot = aT - gravity1;
-mdot = k*dabs(u);
+mdot = -k*dabs(u);
 
 % Output
 output(1).dynamics = [zdot vdot mdot];

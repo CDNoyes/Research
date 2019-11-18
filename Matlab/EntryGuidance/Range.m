@@ -6,7 +6,7 @@
 
 function [DR,CR] = Range(lon0,lat0,heading0,lonc,latc)
 
-r_p = 3397; %km
+r_p = 3396.2; %km
 
 d13 = acos(sin(latc).*sin(lat0)+cos(latc).*cos(lat0).*cos(lonc-lon0));
 % if abs(d13) < 1e-4

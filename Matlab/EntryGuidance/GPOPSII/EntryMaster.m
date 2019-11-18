@@ -6,7 +6,7 @@ dtr = pi/180;
 
 % DR = linspace(740,1030,20);
 % DR = 885;
-DR = 815;
+DR = 915;
 
 for i = 1:length(DR)
 
@@ -43,10 +43,10 @@ bounds.phase.initialtime.upper = t0;
 bounds.phase.finaltime.lower = tfl;
 bounds.phase.finaltime.upper = tfu;
 
-lb = [mars.radiusEquatorial+0e3
+lb = [mars.radiusEquatorial+2e3
     -pi/2
     -pi/2
-    300
+    100
     -45*pi/180 %-25 degrees, FPA
     -pi/2      % Heading
     -pi/2]';   % Bank angle
@@ -60,7 +60,7 @@ ub = [x0(1)+100
     pi/2]';
 
 tol = 0*dtr;
-heading_max = 5.5 * dtr;
+heading_max = 15.5 * dtr;
 fpa_min = -25 * dtr;
 vel_max = 470;
 if 1 % Fixed lat/lon
@@ -68,13 +68,13 @@ if 1 % Fixed lat/lon
     xfu = [ub(1), target.lon, target.lat, vel_max, ub(5), heading_max, ub(7)];
 elseif 0 % Fixed lon i.e. downrange
     xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1), target.lon, ub(3), 470, ub(5), ub(6), ub(7)];
+    xfu = [ub(1), target.lon, ub(3), vel_max, ub(5), ub(6), ub(7)];
 elseif 0 % Fixed lat i.e. crossrange
     xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6), lb(7)];
     xfu = [ub(1:2), target.lat, vel_max, ub(5), ub(6), ub(7)];    
 else % Free lat/lon
     xfl = lb;
-    xfu = [ub(1), ub(2:3), 470, ub(5), ub(6), ub(7)]; 
+    xfu = [ub(1), ub(2:3), vel_max, ub(5), ub(6), ub(7)]; 
 end
 bounds.phase.initialstate.lower =[x0, lb(7)];
 bounds.phase.initialstate.upper = [x0, ub(7)];

@@ -60,7 +60,7 @@ ub = [x0(1)+100
     
 % Free lat/lon
 xfl = lb;
-xfu = [ub(1), ub(2:3), 470, ub(5), ub(6), ub(7)]; 
+xfu = [ub(1), ub(2:3), 600, ub(5), ub(6), ub(7)]; 
 
 bounds.phase(phase).initialstate.lower =[x0, lb(7)];
 bounds.phase(phase).initialstate.upper = [x0, ub(7)];
@@ -104,7 +104,7 @@ lb = [mars.radiusEquatorial+0e3
     0
     -90*pi/180 %-25 degrees, FPA
     -pi/2      % Heading
-    0]';       % Mass
+    1]';       % Mass
 
 ub = [x0(1)+100
     pi
@@ -119,13 +119,13 @@ bounds.phase(phase).initialstate.lower =lb;
 bounds.phase(phase).initialstate.upper = ub;
 bounds.phase(phase).state.lower = lb;
 bounds.phase(phase).state.upper = ub;
-bounds.phase(phase).finalstate.lower = [lb(1), target.lon-0.1, target.lat-0.02, 0, -pi/2, -pi/2, 0];
-bounds.phase(phase).finalstate.upper = [lb(1), target.lon+0.1, target.lat+0.002, 1, 0, pi/2, m0];
+bounds.phase(phase).finalstate.lower = [lb(1), target.lon-0.5, target.lat-0.2, 1, -pi/2, -pi/2, 1];
+bounds.phase(phase).finalstate.upper = [lb(1), target.lon+0.5, target.lat+0.2, 5, 0, pi/2, m0];
 
-bounds.phase(phase).control.lower = [vm.thrust*0.1, 0];
+bounds.phase(phase).control.lower = [vm.thrust*0.4, 0];
 bounds.phase(phase).control.upper = [vm.thrust, 2*pi];
 
-guess.phase(phase).time = [260; 280];
+guess.phase(phase).time = [240; 280];
 guess.phase(phase).state = [xfl(1)+3000, target.lon-.05, target.lat, 500, -12*pi/180, 0*pi/180, m0
                             xfl(1), target.lon, target.lat, 1, -90*pi/180, 0*pi/180, m0*0.7];
 guess.phase(phase).control = [vm.thrust, pi; vm.thrust, pi];
@@ -147,12 +147,12 @@ setup.bounds = bounds;
 
 setup.guess = guess;
 setup.nlp.solver = 'snopt';
-setup.derivatives.supplier = 'sparseFD';
+setup.derivatives.supplier = 'sparseCD';
 setup.derivatives.derivativelevel = 'first';
 setup.scales.method = 'automatic-guessUpdate';
 setup.method = 'RPM-Differentiation';
 setup.mesh.method = 'hp-PattersonRao';
-setup.mesh.tolerance = 1e-2; % default 1e-3
+setup.mesh.tolerance = 1e-3; % default 1e-3
 setup.mesh.colpointsmin = 3;
 setup.mesh.colpointsmax = 10;
 setup.mesh.maxiterations = 50;

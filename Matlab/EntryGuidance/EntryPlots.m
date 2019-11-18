@@ -77,6 +77,20 @@ box on
 legend('Trajectory','Peak Dynamic Pressure','Max L/D','Location','best')
 set(gcf,'name','Downrange vs Crossrange', figSpecs{:})
 
+n = n+1;
+figure(n)
+plot(ts.CR,ts.DR, lineSpecs{:})
+hold on
+plot(ts.CR(i_Qmax),ts.DR(i_Qmax),'ko',ts.CR(i_LoDmax),ts.DR(i_LoDmax),'r*' )
+ylabel('Downrange (km)',textSpecs{:})
+xlabel('Crossrange (km)',textSpecs{:})
+title(['Downrange: ',num2str(ts.DR(end)),' km, Crossrange: ',num2str(ts.CR(end)), ' km'],textSpecs{:})
+axis('equal') % will be ugly for DR > 1000
+grid on
+box on
+legend('Trajectory','Peak Dynamic Pressure','Max L/D','Location','best')
+set(gcf,'name','Downrange vs Crossrange (Equal Scale)', figSpecs{:})
+
 %Lat/Lon
 n = n+1;
 figure(n)
@@ -131,19 +145,24 @@ set(gcf,'name','Heading', figSpecs{:})
 %CONTROL
 n = n+1;
 figure(n)
-subplot 211
+subplot 311
 plot(t,sig/dtr, lineSpecs{:})
 grid on
 axis([0,max(t),-180,180])
 xlabel('Time (s)',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
-subplot 212
+subplot 312
 plot(ts.energy_norm,sig/dtr, lineSpecs{:})
 axis([0,1,-180,180])
 xlabel('Normalized Energy',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 grid on
 box on
+subplot 313
+plot(x(:,4),sig/dtr, lineSpecs{:})
+axis([x(end,4)-100,x(1,4)+500,-180,180])
+xlabel('Velocity',textSpecs{:})
+ylabel('Bank Angle (deg)',textSpecs{:})
 set(gcf,'name','Bank Profile', figSpecs{:})
 
 % MACH
@@ -222,33 +241,7 @@ if isfield(ts,'observer') && ts.observer
 end
 
 
-% Various experimental crossrange plans
-if true
-%     n = n+1;
-%     figure(n)
-%     plot(ts.L./ts.D,abs(ts.CR),lineSpecs{:})
-%     hold on
-%     plot(LoDmax, abs(ts.CR(i_LoDmax)),'ko',lineSpecs{:} )
-%     set(gcf,'name','Crossrange vs L/D', figSpecs{:})
-%     legend(' ','Max L/D')
-    
-%     n = n+1;
-%     figure(n)
-%     plot(ts.D, abs(ts.CR),lineSpecs{:})
-%     set(gcf,'name','Crossrange vs Drag', figSpecs{:})
-%     grid on
-    
-    n = n+1;
-    figure(n)
-    plot(ts.L'.*cos(x(:,5)), abs(ts.CR),lineSpecs{:})
-    hold on
-    plot(ts.L(i_Qmax)*cos(x(i_Qmax,5)), abs(ts.CR(i_Qmax)),'ko',ts.L(i_LoDmax),abs(ts.CR(i_LoDmax)),'r*', lineSpecs{:} )
-%     plot(Lmax, abs(ts.CR(i_Lmax)),'r*',lineSpecs{:} )
-    set(gcf,'name','Crossrange vs Lcos\gamma', figSpecs{:})
-    legend(' ','Max Dyn Press', 'Max L/D')
-    grid on
-    
-end
+
 
 % Drag dynamics, for analysis
 if false

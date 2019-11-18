@@ -7,7 +7,14 @@ rp      = input.auxdata.planet.radiusEquatorial;
 d       = input.auxdata.delta;
 
 x = input.phase.state;
-dSigma = input.phase.control;
+nx = size(x,2);
+if nx == 7
+    dSigma = input.phase.control;
+    Sigma = x(:,7);
+else
+    dSigma = [];
+    Sigma = input.phase.control;
+end
 
 r = x(:,1);
 theta = x(:,2);
@@ -15,7 +22,7 @@ phi = x(:,3);
 v = x(:,4);
 gamma = x(:,5);
 psi = x(:,6);
-Sigma = x(:,7);
+
 
 
 g = mu./(r.^2);

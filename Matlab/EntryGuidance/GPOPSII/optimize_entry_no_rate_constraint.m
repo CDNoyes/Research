@@ -1,4 +1,4 @@
-function traj = optimize_entry(DR, CR, fpa_min, heading_max)
+function traj = optimize_entry_no_rate_constraint(DR, CR)
 
 dtr = pi/180;
 
@@ -8,7 +8,7 @@ vm = VehicleModel();
 
 % Initial states:
 %[radius long lat velocity fpa heading]
-x0 = [3540e3; 0*dtr; 0*dtr; 6000; -14.5*dtr; 0*dtr]';
+x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.5*dtr; 0*dtr]';
 
 % Target info:
 target.DR = DR;
@@ -19,7 +19,7 @@ target.CR = CR;
 auxdata.target = target;
 auxdata.planet = mars;
 auxdata.vehicle = vm;
-auxdata.dimension.state = 7;
+auxdata.dimension.state = 6;
 auxdata.dimension.control = 1;
 auxdata.dimension.parameter = 0;
 auxdata.delta.CD = 0;
@@ -39,64 +39,56 @@ lb = [mars.radiusEquatorial + -20e3
     -pi/2
     -pi/2
     300
-    -45*pi/180 %-25 degrees, FPA
+    -45*dtr %-25 degrees, FPA
     -pi/2      % Heading
-    -pi/2]';   % Bank angle
+    ]';   %
 
 ub = [x0(1) + 20e3
-    0.4  % like 1500 km on Mars
+    0.4  % like 1500 km on Mars 
     pi/2
     x0(4)+500
-    10*dtr % FPA constraint degrees
+    30*dtr % FPA constraint degrees
     pi/2
-    pi/2]';
+    ]';
 
-% heading_max = 2. * dtr;
-% fpa_min = -14.5 * dtr;
-vel_max = 400;
-update_range = 0;
+heading_max = 30. * dtr;
+fpa_min = -40 * dtr;
+vel_max = 550;
 if 0 % Fixed lat/lon
-    xfl = [lb(1), target.lon, target.lat, lb(4), fpa_min, -heading_max, lb(7)];
-    xfu = [ub(1), target.lon, target.lat, vel_max, ub(5), heading_max, ub(7)];
+    xfl = [lb(1), target.lon, target.lat, lb(4), fpa_min, -heading_max];
+    xfu = [ub(1), target.lon, target.lat, vel_max, ub(5), heading_max];
     
 elseif 0 % Fixed lon i.e. downrange
-    xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1), target.lon, ub(3), vel_max, ub(5), ub(6), ub(7)];
+    xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6)];
+    xfu = [ub(1), target.lon, ub(3), vel_max, ub(5), ub(6)];
     
 elseif 1 % Fixed lat i.e. crossrange
-    xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6), lb(7)];
-    xfu = [ub(1:2), target.lat, vel_max, ub(5), ub(6), ub(7)];
-    update_range = 1;
+    xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6)];
+    xfu = [ub(1:2), target.lat, vel_max, ub(5), ub(6)];
     
 else % Free lat/lon
     xfl = lb;
-    xfu = [ub(1), ub(2:3), vel_max, ub(5), ub(6), ub(7)];
-    update_range = 1;
+    xfu = [ub(1), ub(2:3), vel_max, ub(5), ub(6)];
 end
 
-x0l = x0;
-x0u = x0;
-if 1    % This allows the optimizer to choose the initial FPA
-    x0l(5) = -25*dtr;
-    x0u(5) = -10*dtr;
-end
-bounds.phase.initialstate.lower =[x0l, lb(7)];
-bounds.phase.initialstate.upper = [x0u, ub(7)];
+
+bounds.phase.initialstate.lower =[x0 ];
+bounds.phase.initialstate.upper = [x0];
 bounds.phase.state.lower = [lb];
 bounds.phase.state.upper = [ub];
 bounds.phase.finalstate.lower = [xfl];
 bounds.phase.finalstate.upper = [xfu];
 
-bank_rate = 20*dtr;
-bounds.phase.control.lower = -bank_rate;
-bounds.phase.control.upper = bank_rate;
+bank_limit = 90*dtr;
+bounds.phase.control.lower = -bank_limit;
+bounds.phase.control.upper = bank_limit;
 bounds.phase.integral.lower = 0;
 bounds.phase.integral.upper = 5000;
 
 % Initial Guess
 tGuess = [t0;0.5*(tfu+tfl)];
 guess.phase.time = tGuess;
-guess.phase.state = [[x0,-pi/4]; [3396200, 0.27, 0, vel_max, -0.25, 0, 0]];
+guess.phase.state = [x0; [3396200, 0.27, 0, vel_max, -0.26, 0]];
 guess.phase.control = zeros(2,1);
 guess.phase.integral = 0;
 
@@ -120,17 +112,12 @@ setup.mesh.method = 'hp-PattersonRao'; % 'hp-PattersonRao'
 setup.mesh.tolerance = 1e-5; % default 1e-3
 % setup.mesh.colpointsmin = 3;
 % setup.mesh.colpointsmax = 10;
-setup.mesh.maxiterations = 20;
+setup.mesh.maxiterations = 30;
 setup.displaylevel = 1; % default 2
 sol = gpops2(setup);
 Sol = sol.result.solution.phase;
 
-if update_range
-    [target.DR, target.CR] = Range(x0(2), x0(3), x0(6),Sol.state(end,2),Sol.state(end,3));
-    target.lon = Sol.state(end,2);
-end
-
-traj = TrajectorySummary(Sol.time,Sol.state,Sol.state(:,7),target.DR,target.CR);
-traj.sigma_dot = Sol.control; % left in radians
+traj = TrajectorySummary(Sol.time,Sol.state,Sol.control,target.DR,target.CR);
+EntryPlots(traj);
 
 end

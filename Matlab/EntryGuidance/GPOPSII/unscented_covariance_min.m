@@ -9,7 +9,7 @@ clc;
 
 global P0 CLOSED_LOOP
 P0 = 0.0069; % 0.0069 = +/-0.25 3-sigma
-CLOSED_LOOP = false;
+CLOSED_LOOP = true;
 
 output = SolveOCP();
 
@@ -47,7 +47,12 @@ set(gcf,'WindowStyle','docked')
 
 figure(3)
 hold all
-plot(sol.time,sol.control)
+plot(sol.time, sol.control)
+% temp = 0.4*sol.control/6;
+% throttle = 0.6 - 0.4*0.5 + 0.4*sol.control/6;
+
+% plot(sol.time, throttle)
+% save("throttle.mat", "throttle")
 % plot(sol.time, u_theory)
 % legend('Numerical','Theory')
 title('Control')
@@ -85,7 +90,7 @@ global CLOSED_LOOP P0
 
 t0 = 0;
 tmin = 1;
-tmax = 1;
+tmax = 2;
 
 x0 = 1;
 n = 3;

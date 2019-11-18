@@ -7,15 +7,17 @@ if 1
 end
 clc;
 
-global P0 CLOSED_LOOP
-P0 = 0.0069*3; % 0.0069= +/-0.25 3-sigma
-CLOSED_LOOP = false;
+global P0 CLOSED_LOOP Pc
+P0 = 0.0069; % 0.0069= +/-0.25 3-sigma
+CLOSED_LOOP = true;
+Pc = (0.1/3)^2;
 
 output = SolveOCP();
 
 sol = output.result.solution.phase(1);
 STM = sol.state(:,2);
-P = STM.^2 * P0;
+STM2 = sol.state(:,3);
+P = STM.^2 * P0 + STM2.^2*Pc;
 std = sqrt(P);
 
 D = Dynamics(output.result.solution);
@@ -52,8 +54,9 @@ set(gcf,'WindowStyle','docked')
 figure(3)
 hold all
 plot(sol.time,sol.control)
+plot(sol.time, D.u)
 % plot(sol.time, u_theory)
-legend('Numerical','Theory')
+% legend('Numerical','Theory')
 title('Control')
 set(gcf,'name','Control vs Time','numbertitle','off')
 set(gcf,'WindowStyle','docked')
@@ -90,8 +93,8 @@ function output = SolveOCP()
 global CLOSED_LOOP
 
 t0 = 0;
-tmin = 1;
-tmax = 1;
+tmin = 2;
+tmax = 2;
 
 x0 = 1;
 stm0 = 1;
@@ -110,14 +113,14 @@ bounds.phase(iphase).initialtime.upper    = t0;
 bounds.phase(iphase).finaltime.lower      = tmin;
 bounds.phase(iphase).finaltime.upper      = tmax;
 
-bounds.phase(iphase).initialstate.lower          = [x0 stm0];
-bounds.phase(iphase).initialstate.upper          = [x0 stm0];
+bounds.phase(iphase).initialstate.lower          = [x0 stm0, 0];
+bounds.phase(iphase).initialstate.upper          = [x0 stm0, 0];
 
-bounds.phase(iphase).state.lower          = [xmin -1000];
-bounds.phase(iphase).state.upper          = [xmax 1000];
+bounds.phase(iphase).state.lower          = [xmin -1000, -1000];
+bounds.phase(iphase).state.upper          = [xmax 1000, 1000];
 
-bounds.phase(iphase).finalstate.lower          = [xf -1000];
-bounds.phase(iphase).finalstate.upper          = [xf 1000];
+bounds.phase(iphase).finalstate.lower          = [xf -1000, -1000];
+bounds.phase(iphase).finalstate.upper          = [xf 1000, 1000];
 
 bounds.phase(iphase).control.lower = [-umax];
 bounds.phase(iphase).control.upper = [umax];
@@ -130,9 +133,9 @@ end
 % bounds.phase(iphase).integral.upper = tmax*amax^2;
 
 %% Guess
-if 0
+if 1
 guess.phase(iphase).time           = [0; tmax]; % 0.5*(tmin+tmax)
-guess.phase(iphase).state     = [x0, 1; xf, 1e-3];
+guess.phase(iphase).state     = [x0, 1, 0; xf, 1e-3, 0];
 guess.phase(iphase).control   = [3; -3];
 % guess.phase(iphase).integral = [ 0.5*(amin+amax)*15];
 else
@@ -179,7 +182,7 @@ output.objective = Pf;
 end
 
 function output = Dynamics(input)
-global P0 CLOSED_LOOP
+global P0 Pc CLOSED_LOOP
 
 t = input.phase(1).time;
 s = input.phase(1).state;
@@ -188,16 +191,16 @@ control1 = input.phase(1).control;
 % Variables
 x     = s(:,1);
 stm   = s(:,2);
+stm2   = s(:,3);
 
-% Trigonometric function in system dynamics
-% dx = sin(x) + (1+0*x.^2).*control1;
-% dstm = (cos(x) + 0*2*x.*control1).*stm;
-alpha = 0.35;
+alpha = 0.1;
 dx = -alpha*dabs(x).*x + control1;
 A = -2*alpha*dabs(x);
 B = 1;
 dstm = A.*stm;
+dstm2 = A.*stm2 -dabs(x).*x;
 
+output.u = control1;
 
 if CLOSED_LOOP
     
@@ -222,10 +225,11 @@ if CLOSED_LOOP
 %         end
 %     end
 %     K(end) = K(end-1);
-            K = -1;
+            K = -10;
 %         K = 0; % This allows for open loop covariance, still respecting state bounds
     dstm = (A+B*K).*stm;
-    P = stm.^2 * P0;
+    dstm2 = (A+B*K).*stm2 -dabs(x).*x;
+    P = stm.^2 * P0 + stm2.^2*Pc;
     std = sqrt(P);
     delta = 3*std;
     u1 = control1 + K.*delta;
@@ -233,9 +237,10 @@ if CLOSED_LOOP
     output(1).path = [x+delta, x-delta, u1, u2];
     output(1).gains = K;
     output(1).std = delta;
+    output(1).u = [u1, u2];
 end
 
-output(1).dynamics = [dx dstm];
+output(1).dynamics = [dx dstm dstm2];
 
 end
 

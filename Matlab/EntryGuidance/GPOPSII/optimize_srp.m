@@ -1,14 +1,20 @@
-function sol = optimize_srp(x0, tf)
+function output = optimize_srp(x0, tf, loadguess)
 % Computes the optimal solution to SRP problems treating thrust
 % magnitude and unit vector as the control variables
 
-% Set tf = 0 to free the final time, otherwise it will be fixed 
+% Set tf = 0 to free the final time, otherwise it will be fixed
 
-x0 = cell2mat(x0);
-% load('E:\Documents\GitHub\Research\Matlab\data\srp_z3200.mat')
-% guess.phase = sol;
-% output = SolveOCP(x0, tf, guess);
-output = SolveOCP(x0, tf, []);
+if iscell(x0)
+    x0 = cell2mat(x0);
+end
+
+if loadguess
+    load('E:\Documents\GitHub\Research\Matlab\data\SRPTable\srp_3200_0_3000_n400_0_n190.mat')
+    guess.phase = sol;
+    output = SolveOCP(x0, tf, guess);
+else
+    output = SolveOCP(x0, tf, []);
+end
 
 sol = output.result.solution.phase(1);
 % save(['./data/srp_z',num2str(int16(x0(3))),'.mat'], 'sol');
@@ -109,14 +115,6 @@ end
 end
 
 function output = SolveOCP(X, tf, guess)
-t0 = 0;
-tmin = tf;
-if tf == 0
-    tmax = 40;
-else
-    tmax = tf;
-end
-
 x0 = X(1);
 y0 = X(2);
 z0 = X(3);
@@ -124,6 +122,23 @@ u0 = X(4);
 v0 = X(5);
 w0 = X(6);
 m0 = X(7);
+
+% Thrust acceleration limits
+amin = 40;
+amax = 70;
+Tmin = amin*m0;
+Tmax = amax*m0;
+
+t0 = 0;
+tmin = tf;
+
+if tf == 0
+    tmax = (m0-1)*9.81*300/Tmin; % At this point the vehicle is nearly massless if using the minimal thrust
+else
+    tmax = tf;
+end
+
+
 
 xmin = -15e3;
 xmax = 15e3;
@@ -142,6 +157,8 @@ wmax = 100;
 mmin = 10; % dry mass, should be set to >0
 mmax = m0;
 
+pinpoint = 1; % no pinpoint =  soft landing, 0 velocity at target altitude, any downrange/crossrange
+
 xf = 0;
 yf = 0;
 zf = 0;
@@ -150,11 +167,8 @@ vf = 0;
 wfmin = 0;
 wfmax = 0;
 
-% Thrust acceleration limits
-amin = 40;
-amax = 70;
-Tmin = amin*m0;
-Tmax = amax*m0;
+
+
 
 %% Bounds Definition
 iphase = 1;
@@ -169,9 +183,13 @@ bounds.phase(iphase).initialstate.upper          = [x0 y0 z0 u0 v0 w0 m0];
 
 bounds.phase(iphase).state.lower          = [xmin ymin zmin umin vmin wmin mmin];
 bounds.phase(iphase).state.upper          = [xmax ymax zmax umax vmax wmax mmax];
-
-bounds.phase(iphase).finalstate.lower          = [xf yf zf uf vf wfmin mmin];
-bounds.phase(iphase).finalstate.upper          = [xf yf zf uf vf wfmax mmax];
+if pinpoint
+    bounds.phase(iphase).finalstate.lower          = [xf yf zf uf vf wfmin mmin];
+    bounds.phase(iphase).finalstate.upper          = [xf yf zf uf vf wfmax mmax];
+else
+    bounds.phase(iphase).finalstate.lower          = [xmin ymin zf uf vf wfmin mmin];
+    bounds.phase(iphase).finalstate.upper          = [xmax ymax zf uf vf wfmax mmax];
+end
 
 bounds.phase(iphase).control.lower = [Tmin, -1,-1,-1];
 bounds.phase(iphase).control.upper = [Tmax,  1, 1, 1];
@@ -184,14 +202,18 @@ bounds.phase(iphase).path.upper = 1;
 
 %% Guess
 if nargin == 2 || isempty(guess)
-    guess.phase(iphase).time      = [0; 20];
+    guess.phase(iphase).time      = [0; tmax/3];
     guess.phase(iphase).state     = [bounds.phase(iphase).initialstate.lower; bounds.phase(iphase).finalstate.lower];
     guess.phase(iphase).control   = [Tmax 1 0 0; Tmin 0 0 -1];
 end
 %% NLP Parameters and Optimization Call
 setup.name = 'SRP Optimization';
 setup.functions.continuous = @Dynamics;
-setup.functions.endpoint = @Cost;
+if pinpoint
+    setup.functions.endpoint = @MassCost;
+else
+    setup.functions.endpoint = @DistanceCost;
+end
 setup.nlp.solver = 'snopt';
 if strcmp(setup.nlp.solver,'snopt')
     setup.nlp.snoptoptions.tolerance = 1e-6; % Default 1e-6
@@ -203,13 +225,13 @@ elseif strcmp(setup.nlp.solver,'ipopt')
 end
 setup.bounds = bounds;
 setup.guess = guess;
-setup.derivatives.supplier = 'sparseFD'; % 'sparseFD' or 'sparseBD' or 'sparseCD' or 'adigator'
+setup.derivatives.supplier = 'sparseCD'; % 'sparseFD' or 'sparseBD' or 'sparseCD' or 'adigator'
 setup.derivatives.derivativelevel = 'first'; % 'first' or 'second'
 setup.derivatives.dependencies = 'sparseNaN'; % 'full', 'sparse' or 'sparseNaN'
 setup.scales.method = 'automatic-guessUpdate'; % 'none' or 'automatic-bounds' or 'automatic-guess' or 'automatic-guessUpdate' or 'automatic-hybrid' or 'automatic-hybridUpdate' or 'defined'
 setup.mesh.method = 'hp-PattersonRao'; % 'hp-PattersonRao' or 'hp-DarbyRao' or 'hp-LiuRao'
-setup.mesh.tolerance = 1e-5; % Default 1e-3
-setup.mesh.maxiterations = 20; % Default 10
+setup.mesh.tolerance = 1e-4; % Default 1e-3
+setup.mesh.maxiterations = 10; % Default 10
 setup.method = 'RPM-Differentiation'; % 'RPM-Differentiation' or 'RPM-Integration'
 setup.displaylevel = 0; % 0 = no output. 1 = only mesh refinement. 2 = NLP solver iteration output and mesh refinement
 
@@ -217,9 +239,15 @@ output = gpops2(setup);
 
 end
 
-function output = Cost(input)
+function output = MassCost(input)
 
-output.objective = -input.phase(1).finalstate(7);
+output.objective = -input.phase(1).finalstate(7);  % maximizing final mass = minimizing propellant usage 
+
+end
+
+function output = DistanceCost(input)
+rf = input.phase(1).finalstate(1:3);
+output.objective = rf*rf';  % minimizing miss distance 
 
 end
 
