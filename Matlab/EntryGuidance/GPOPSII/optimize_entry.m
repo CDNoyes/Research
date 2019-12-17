@@ -53,7 +53,7 @@ ub = [x0(1) + 20e3
 
 % heading_max = 2. * dtr;
 % fpa_min = -14.5 * dtr;
-vel_max = 400;
+vel_max = 500;
 update_range = 0;
 if 0 % Fixed lat/lon
     xfl = [lb(1), target.lon, target.lat, lb(4), fpa_min, -heading_max, lb(7)];
