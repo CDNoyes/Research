@@ -9,7 +9,7 @@ if iscell(x0)
 end
 
 if loadguess
-    load('E:\Documents\GitHub\Research\Matlab\data\SRPTable\srp_3200_0_3000_n400_0_n190.mat')
+    load('E:\Documents\GitHub\Research\Matlab\data\lower_thrust_weight\srp_20000_0_5000_n500_n150.mat')
     guess.phase = sol;
     output = SolveOCP(x0, tf, guess);
 else
@@ -124,8 +124,9 @@ w0 = X(6);
 m0 = X(7);
 
 % Thrust acceleration limits
-amin = 40;
-amax = 70;
+% Original Tables were built using [40, 70]
+amin = 8;
+amax = 15;
 Tmin = amin*m0;
 Tmax = amax*m0;
 
@@ -140,8 +141,8 @@ end
 
 
 
-xmin = -15e3;
-xmax = 15e3;
+xmin = -45e3;
+xmax = 45e3;
 ymin = xmin;
 ymax = xmax;
 zmin = 0;
@@ -203,7 +204,7 @@ bounds.phase(iphase).path.upper = 1;
 %% Guess
 if nargin == 2 || isempty(guess)
     guess.phase(iphase).time      = [0; tmax/3];
-    guess.phase(iphase).state     = [bounds.phase(iphase).initialstate.lower; bounds.phase(iphase).finalstate.lower];
+    guess.phase(iphase).state     = [bounds.phase(iphase).initialstate.lower; bounds.phase(iphase).finalstate.lower(1:6), 0.8*m0];
     guess.phase(iphase).control   = [Tmax 1 0 0; Tmin 0 0 -1];
 end
 %% NLP Parameters and Optimization Call
@@ -258,14 +259,14 @@ function output = Dynamics(input)
 % Dynamics in Phase 1 %
 %        SRP          %
 %---------------------%
-t1 = input.phase(1).time;
+% t1 = input.phase(1).time;
 s1 = input.phase(1).state;
 control1 = input.phase(1).control;
 
 % Variables
-x1     = s1(:,1);
-y1     = s1(:,2);
-z1     = s1(:,3);
+% x1     = s1(:,1);
+% y1     = s1(:,2);
+% z1     = s1(:,3);
 u1     = s1(:,4);
 v1     = s1(:,5);
 w1     = s1(:,6);
@@ -295,7 +296,7 @@ mdot1 = -T/ve;
 % Output
 % output(1).integrand = T;
 output(1).dynamics = [xdot1 ydot1 zdot1 udot1 vdot1 wdot1 mdot1];
-output(1).path = (sum(control1(:,2:4).^2,2)); %Norm of the control directions
+output(1).path = (sum(control1(:,2:4).^2,2)); % Norm of the control directions
 
 end
 

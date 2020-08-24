@@ -29,7 +29,7 @@ figure(n)
 grid on
 box on
 set(gcf,'name','Altitude vs Velocity', figSpecs{:})
-ParachuteDeploymentConstraints(true);
+% ParachuteDeploymentConstraints(true);
 hold on
 plot(x(:,4),hkm, lineSpecs{:})
 xlabel('Velocity (m/s)',textSpecs{:})
@@ -161,6 +161,7 @@ box on
 subplot 313
 plot(x(:,4),sig/dtr, lineSpecs{:})
 axis([x(end,4)-100,x(1,4)+500,-180,180])
+set(gca, 'XDir','reverse')
 xlabel('Velocity',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 set(gcf,'name','Bank Profile', figSpecs{:})
@@ -216,6 +217,16 @@ grid on
 box on
 set(gcf,'name','g-load profile', figSpecs{:})
 
+% Drag vs Range:
+% n = n+1;
+% figure(n)
+% grid on
+% box on
+% set(gcf,'name','Drag vs Range', figSpecs{:})
+% hold on
+% plot(ts.DR, ts.D, lineSpecs{:})
+% xlabel('DownRange (km)',textSpecs{:})
+% ylabel('Drag (m/s)',textSpecs{:})
 
 if isfield(ts,'observer') && ts.observer
     n = n+1;

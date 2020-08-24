@@ -85,6 +85,7 @@ bounds.phase.control.upper = bank_limit;
 bounds.phase.integral.lower = 0;
 bounds.phase.integral.upper = 5000;
 
+
 % Initial Guess
 tGuess = [t0;0.5*(tfu+tfl)];
 guess.phase.time = tGuess;
