@@ -11,29 +11,32 @@ fprintf(['\nA demonstration of the iLQG algorithm '...
 % Set full_DDP=true to compute 2nd order derivatives of the 
 % dynamics. This will make iterations more expensive, but 
 % final convergence will be much faster (quadratic)
-full_DDP = 0;
  
-global hscale vscale fpascale ds v0
+global hscale vscale fpascale ds v0 rangescale full_DDP
+full_DDP = 1;
+
 hscale = 120e3;
 vscale = 5500;
 fpascale = 0.2;
 v0 = 5461.4;
+rangescale = 500;
+scale = [hscale, vscale, fpascale, rangescale];
 
 % set up the optimization problem
 DYNCST  = @(x,u,i) entry_dyn_cst(x,u,full_DDP);
 V       = 550; % terminal velocity, m/s
 dV      = v0-V; 
-T       = 500;              % horizon
+T       = 1000;              % horizon
 ds      = dV/T;
 
-x0      = [39.4497e3/hscale, 0, (-10.604*pi/180)/fpascale]';   % initial state
-u0      = ones(1,floor(T))*0.2;    % initial controls
+x0      = [39.4497e3/hscale, 0, (-10.604*pi/180)/fpascale, 0]';   % initial state
+% u0      = ones(1,floor(T));    % initial controls
 % u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
-
+u0 = linspace(0, 1, T);
 
 Op.lims  = [0 1];         % wheel angle limits (radians)
 Op.plot = 1;               % plot the derivatives as well
-Op.maxIter = 20;
+Op.maxIter = 28;
 Op.parallel = 0;
 
 
@@ -42,16 +45,18 @@ Op.parallel = 0;
 
 h = x(1,:)*hscale/1000;
 v = v0 - x(2,:)*vscale;
-% s = linspace(0, S, T+1);
+s = x(4,:)*rangescale;
 
 disp(['hf = ',num2str(h(end)),' km'])
 disp(['Vf = ',num2str(v(end)),' m/s'])
+disp(['sf = ',num2str(s(end)),' km'])
 
-% figure
-% plot(s, h)
-% xlabel('Downrange km')
-% ylabel('Altitude km')
-% grid on
+
+figure
+plot(s, h)
+xlabel('Downrange km')
+ylabel('Altitude km')
+grid on
 
 figure
 plot(v, h)
@@ -60,7 +65,7 @@ ylabel('Altitude km')
 grid on
 
 function [g,L,D] = entry_accels(x)
-global hscale vscale v0
+global hscale vscale v0 
 % constants
 cd  = 1.46;     
 cl  = 0.35;    
@@ -68,6 +73,7 @@ rp = 3396.2e3;
 m = 7200;
 S = 15.8;
 mu = 4.2830e13;
+
 % states
 h = x(1,:)*hscale;
 v = v0 - x(2,:)*vscale;
@@ -80,7 +86,7 @@ L = f*cl;
 g = mu./(rp+h).^2;
 
 function y = entry_dynamics(x,u)
-global hscale vscale ds fpascale v0
+global hscale vscale ds fpascale v0 rangescale full_DDP
 
 % === states and controls:
 % x = [h dv gamma]' 
@@ -97,28 +103,35 @@ fpa = x(3,:)*fpascale;
 [g,L,D] = entry_accels(x);
 
 % Derivs
-% sdot = v.*cos(fpa);
+sdot = v.*cos(fpa)/1000; % in km 
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
-fpadot = L./v.*u + (v./(rp+h) - g./v).*cos(fpa);
+fpadot = L./v.*u.^(1+full_DDP) + (v./(rp+h) - g./v).*cos(fpa);
 
-xdot = [hdot/hscale; -vdot/vscale; fpadot/fpascale];            % change in state
+xdot = [hdot/hscale; -vdot/vscale; fpadot/fpascale; sdot/rangescale];            % change in state
 
 dt = ds./(-vdot);   % just for estimate 
 y  = x + xdot.*dt;  % new state
 
 
 function c = entry_cost(x, u)
-global hscale vscale wu hf cost_scale wh fpascale ds v0
+global hscale vscale wu hf cost_scale wh fpascale ds v0 rangescale
 
 cost_scale = 10000;
+% targets
 hf = 7.5;
+sf = 334;
+
+% weights
 wu = 0.0;
 wh = 0;
+ws = 0;
 
+% states
 h = x(1,:)*hscale;
 v = v0 - x(2,:)*vscale;
 fpa = x(3,:)*fpascale;
+s = x(4,:)*rangescale;
 
 % cost function 
 % sum of 3 terms:
@@ -133,7 +146,7 @@ u(:,final)  = 0;
 lu    = wu*u.^2;
 
 % running cost
-[g,L,D] = entry_accels(x);
+[g,~,D] = entry_accels(x);
 
 hdot = v.*sin(fpa); 
 vdot = -D - g.*sin(fpa);
@@ -142,8 +155,8 @@ lx = hdot./vdot * ds;
 
 % final cost
 if any(final)
-   llf      = wh*(hf-x(1,:)*hscale/1000).^2; % in real coordinates
-   lf = zeros(size(u));
+   llf      = ws*(sf-s).^2; % in real coordinates
+   lf       = zeros(size(u));
    lf(1,final)= llf(1,final);
 else
    lf    = 0;
@@ -185,8 +198,8 @@ if nargout == 2
     c = entry_cost(x,u);
 else
     % state and control indices
-    ix = 1:3;
-    iu = 4;
+    ix = 1:4;
+    iu = 5;
     
     % dynamics first derivatives
     xu_dyn  = @(xu) entry_dynamics(xu(ix,:),xu(iu,:));
@@ -203,7 +216,7 @@ else
         if N_J <= 2 
             JJ = reshape(JJ,[3 4 N_J(2)]); 
         else 
-            JJ = reshape(JJ, [3 4 N_J(2) N_J(3)]); 
+            JJ = reshape(JJ, [4 5 N_J(2) N_J(3)]); 
         end
         JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
         fxx     = JJ(:,ix,ix,:);
@@ -296,4 +309,4 @@ hs = 9354.5;
 lx = [-(v.*sin(fpa).*((2*mu*sin(fpa))./(h + rp).^3 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*hs*m)))./((mu*sin(fpa))./(h + rp).^2 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*m)).^2 
     (S*cd*rho0*v.^2.*exp(-h/hs).*sin(fpa))./(m*((mu*sin(fpa))./(h + rp).^2 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*m)).^2) - sin(fpa)./((mu.*sin(fpa))./(h + rp).^2 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*m))
     (mu*v.*cos(fpa).*sin(fpa))./((h + rp).^2.*((mu*sin(fpa))./(h + rp).^2 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*m)).^2) - (v.*cos(fpa))./((mu.*sin(fpa))./(h + rp).^2 + (S*cd*rho0*v.^2.*exp(-h/hs))./(2*m))]*ds;
- lx = lx.*[hscale, vscale, fpascale]';
+ lx = lx./[hscale, vscale, fpascale]';

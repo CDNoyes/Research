@@ -142,15 +142,28 @@ trace(1).dlambda = dlambda;
 if size(x0,2) == 1
     diverge = true;
     u(:,end) = nan*u(:,end);
-    for alpha = Op.Alpha
+    cost_init = [];
+    u_init = {};
+        x_init = {};
+
+    for alpha = 1 %Op.Alpha 
         [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
         % simplistic divergence test
+        cost_init(end+1) = sum(cost);
+        u_init{end+1} = un;
+        x_init{end+1} = x;
+
         if all(abs(x(:)) < 1e8)
             u = un;
             diverge = false;
             break
         end
     end
+%     diverge=false;
+%     [cost,k] = min(cost_init);
+%     u = u_init{k};
+%     x = x_init{k};
+
 elseif size(x0,2) == N+1 % pre-rolled initial forward pass
     x        = x0;
     diverge  = false;
@@ -249,7 +262,7 @@ for iter = 1:Op.maxIter
             Dcost               = sum(cost(:)) - sum(costnew,2);
             [dcost, w]          = max(Dcost);
             alpha               = Op.Alpha(w);
-            disp(["Stepsize = ",num2str(alpha)])
+%             disp(["Stepsize = ",num2str(alpha)])
             expected            = -alpha*(dV(1) + alpha*dV(2));
             if expected > 0
                 z = dcost/expected;
@@ -276,7 +289,7 @@ for iter = 1:Op.maxIter
                 end
                 if (z > Op.zMin)
                     fwdPassDone = 1;
-                    disp(["Stepsize = ",num2str(alpha)])
+%                     disp(["Stepsize = ",num2str(alpha)])
                     break;
                 end
             end
@@ -445,21 +458,28 @@ end
 xnew = permute(xnew, [1 3 2]);
 unew = permute(unew, [1 3 2]);
 cnew = permute(cnew, [1 3 2]);
-if 0
-   global hscale vscale
+if 0 %isempty(L)
+
+   [h,v,fpa,s] = get_states(xnew);
    figure
    plot(unew)
    figure
-   if ndims(xnew) == 2
-   plot(xnew(2,:)*vscale, xnew(1,:)*hscale) 
-   else
-       for k = 1:size(x,3)
-       plot(xnew(2,:, k)*vscale, xnew(1,:, k)*hscale) 
-       end
-   end
+   plot(v', h'/1000, 'b') 
     grid on
 end
 
+function [h,v,fpa,s] = get_states(x)
+global scale n_samples v0
+
+ih = 1:n_samples;
+iv = n_samples + ih;
+ig = n_samples + iv;
+is = n_samples + ig;
+
+h = x(ih,:)*scale(1); % m
+v = v0 - x(iv,:)*scale(2); % m/s
+fpa = x(ig,:)*scale(3);
+s = x(is,:)*scale(4); % km
 
 
 function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
@@ -638,7 +658,7 @@ if figures ~= 0  && ( mod(mT,figures) == 0 || init == 2 )
     subplot(2,2,4);
     plot(T,[trace(T).reduc_ratio]','.-','linewidth',2);
     title 'actual/expected reduction ratio'
-    set(gca,'xlim',[0 mT+1],'ylim',[0 10],'Ygrid','on');
+    set(gca,'xlim',[0 mT+1],'ylim',[0 3],'Ygrid','on');
     xlabel 'iterations'
     
     set(findobj(fig1,'-property','FontSize'),'FontSize',8)
