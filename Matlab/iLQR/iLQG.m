@@ -146,7 +146,7 @@ if size(x0,2) == 1
     u_init = {};
         x_init = {};
 
-    for alpha = 1 %Op.Alpha 
+    for alpha = 1:Op.Alpha 
         [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
         % simplistic divergence test
         cost_init(end+1) = sum(cost);
@@ -159,10 +159,7 @@ if size(x0,2) == 1
             break
         end
     end
-%     diverge=false;
-%     [cost,k] = min(cost_init);
-%     u = u_init{k};
-%     x = x_init{k};
+
 
 elseif size(x0,2) == N+1 % pre-rolled initial forward pass
     x        = x0;
@@ -459,27 +456,29 @@ xnew = permute(xnew, [1 3 2]);
 unew = permute(unew, [1 3 2]);
 cnew = permute(cnew, [1 3 2]);
 if 0 %isempty(L)
-
    [h,v,fpa,s] = get_states(xnew);
    figure
-   plot(unew)
+   plot(v(1:end-1), unew')
    figure
-   plot(v', h'/1000, 'b') 
+   plot(v, h'/1000, 'b') 
+    grid on
+    
+      figure
+   plot(v, s'/1000, 'b') 
     grid on
 end
 
 function [h,v,fpa,s] = get_states(x)
 global scale n_samples v0
-
-ih = 1:n_samples;
-iv = n_samples + ih;
-ig = n_samples + iv;
+iv = 1;
+ih = iv + 1:n_samples;
+ig = n_samples + ih;
 is = n_samples + ig;
 
 h = x(ih,:)*scale(1); % m
 v = v0 - x(iv,:)*scale(2); % m/s
 fpa = x(ig,:)*scale(3);
-s = x(is,:)*scale(4); % km
+s = x(is,:)*scale(4); % m
 
 
 function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
@@ -586,6 +585,7 @@ end
 
 
 function  stop = graphics(figures,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,init)
+global n_samples
 stop = 0;
 
 if figures == 0
@@ -596,6 +596,9 @@ n  = size(x,1);
 N  = size(x,2);
 nL = size(L,2);
 m  = size(u,1);
+
+plot_gains = m == 1; % if we're doing gains opt, don't show the DDP gains
+nmax = min(34, n);
 
 cost  = sum(cost,1);
 T     = [trace.iter];
@@ -623,7 +626,7 @@ if figures ~= 0  && ( mod(mT,figures) == 0 || init == 2 )
     set(ax1,'XAxisL','top','YAxisL','right','xlim',[1 N],'xtick',[])
     line(1:N,cost,'linewidth',4,'color',.5*[1 1 1]);
     ax2 = axes('Position',get(ax1,'Position'));
-    plot((1:N),x','linewidth',2);
+    plot((1:N),x(1:nmax,:)','linewidth',2);
     set(ax2,'xlim',[1 N],'Ygrid','on','YMinorGrid','off','color','none');
     set(ax1,'Position',get(ax2,'Position'));
     double_title(ax1,ax2,'state','running cost')
@@ -631,11 +634,13 @@ if figures ~= 0  && ( mod(mT,figures) == 0 || init == 2 )
     axL = subplot(2,2,3);
     CO = get(axL,'colororder');
     set(axL,'nextplot','replacechildren','colororder',CO(1:min(n,7),:))
-    Lp = reshape(permute(L,[2 1 3]), [nL*m N-1])';
-    plot(axL,1:N-1,Lp,'linewidth',1,'color',0.7*[1 1 1]);
-    ylim  = get(axL,'Ylim');
-    ylim  = [-1 1]*max(abs(ylim));
-    set(axL,'XAxisL','top','YAxisL','right','xlim',[1 N],'xtick',[],'ylim',ylim)
+    if plot_gains
+        Lp = reshape(permute(L,[2 1 3]), [nL*m N-1])';
+        plot(axL,1:N-1,Lp,'linewidth',1,'color',0.7*[1 1 1]);
+        ylim  = get(axL,'Ylim');
+        ylim  = [-1 1]*max(abs(ylim));
+        set(axL,'XAxisL','top','YAxisL','right','xlim',[1 N],'xtick',[],'ylim',ylim)
+    end
     axu = axes('Position',get(axL,'Position'));
     plot(axu,(1:N-1),u(:,1:N-1)','linewidth',2);
     ylim  = get(axu,'Ylim');

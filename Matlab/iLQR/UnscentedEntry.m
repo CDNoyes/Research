@@ -1,13 +1,17 @@
-function [V,X] = UnscentedEntry(X0, u, K)
-
-global n_samples
+function [V,X,U] = UnscentedEntry(V, X0, u, K, W, Xr)
+%%% Xr should be interpolant of [D, fpa, s]
+global n_samples weights
 n_samples = length(X0)/3;
+weights = W;
 
 %%% Integrates longitudinal equations of motion wrt velocity using
 %%% feedforward control u and feedback gains K
-fun = @(v,x) entry_dynamics(v,x,u,K);
-[V,X] = ode45(fun, [5461.4, 550], X0);
+fun = @(v,x) entry_dynamics(v,x,u,K,Xr);
+[V,X] = ode45(fun, [V(1), V(end)], X0);
 
+for i = 1:length(V)
+    [~, U(:,i)] = entry_dynamics(V(i), X(i,:)', u, K, Xr);
+end
 
 function [h,fpa,s,g,L,D] = entry_accels(v,x)
 % constants
@@ -28,7 +32,7 @@ D = f*cd;
 L = f*cl;
 g = mu./(rp+h).^2;
 
-function dx = entry_dynamics(v, x, u, K)
+function [dx, uout] = entry_dynamics(v, x, u, K, Xr)
 
 % === states and controls:
 % x = [h gamma s]'
@@ -41,20 +45,22 @@ rp = 3396.2e3;
 [h, fpa, s, g, L, D] = entry_accels(v,x);
 
 % feedback terms
-if 1
-    % Tuned for decent performance in the guess trajectory
-    kd = 0.1; %more lift up when too much drag
-    ks = -0.1;  % less lift up when too close
-    kf = -50.0;% left lift up when to shallow
+k = K(v);
+kd = k(1);
+ks = k(2);
+kf = k(3);
 
-    ef = get_error(fpa);
-    es = get_error(s);
-    eD = get_error(D);
-    du = kd*eD + ks*es + kf*ef;
-    u_cl = Saturate(u(v)+du, 0, 1);
-else
-    u_cl = u(v);
-end
+% Ref, aka mean from the optimization routine 
+xr = Xr(v);
+ef = fpa-xr(2);
+es = s - xr(3);
+eD = D - xr(1);
+
+
+du = kd*eD + ks*es + kf*ef;
+% u_cl = Saturate(u(v)+du, 0, 1);
+u_cl = smooth_sat(u(v)+du);
+
 
 % Derivs
 sdot = v.*cos(fpa)/1000; % in km
@@ -66,6 +72,9 @@ xdot = [hdot; fpadot; sdot];            % change in state
 
 dt = 1./vdot;   % just for estimate
 dx =  xdot.*repmat(dt, 3, 1);  % new state
+if nargout == 2
+    uout = u_cl;
+end
 
 
 function [h,fpa,s] = get_states(x)
@@ -80,6 +89,20 @@ h = x(ih,:); % m
 fpa = x(ig,:);
 s = x(is,:); % km
 
-function er = get_error(state)
-er = [state(1,:)*0; state(2:end,:)-state(1,:)]; % subtracts the 'prime' point from the rest
-% in reality this should be the mean subtracted from all the points 
+% function er = get_error(state, mean)
+% er = state - get_stats(state);
+
+
+function y = smooth_sat(x)
+K = 20;
+q = 2*x - 1;
+y =  0.5/K * log(cosh(K*(q+1))./cosh(K*(q-1))); % saturates between [-1,1]
+y = 0.5 + 0.5*y; % map back to [0,1]
+
+function [m,v] = get_stats(x)
+global weights
+y = x.*weights;
+m = sum(y, 1);
+if nargout > 1
+    v = sum(weights.*(x-m).^2, 1);
+end

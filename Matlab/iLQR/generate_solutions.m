@@ -3,19 +3,81 @@ sdir = 'E:\Documents\EDL\Documents\PropellantOptimalJournal\ddp\matlab\';
 
 figs = {'Range','Altitude','Fpa','Control'};
 
-% wh = 0.001;
-% ws = 0.01;
+wh = 3;
+ws = 1;
+wu = 0.2;
+
+% OL = entry_stochastic(0, [wh, ws, wu], [0, 1]);
+% CL = entry_stochastic(1, [wh, ws, wu], [0, 1]);
+CLg = entry_stochastic_gains([wh, ws, wu], [0, 1]);
+[hm, fm, sm, hv, fv, sv]=stats(CLg);
+CLg.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+CLg = UTSolve(CLg, CLg.u(2:4,:));
+save(['Robust',num2str(wh),num2str(ws),'.mat'],'-struct','CLg')
+
+% sols = {OL, CL, CLg};
+% for i = 1:3
+%     [hm, fm, sm, hv, fv, sv]=stats(sols{i});
+%     sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+% end
+% save('EqualWeightComparison.mat','sols')
+
+load EqualWeightComparison 
+% sols{3} = CLg;
+% i=3;
+% [hm, fm, sm, hv, fv, sv]=stats(sols{i});
+%     sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+
+% plot_sol(sols{1}, 'k', 0.2,0);
+% plot_sol(sols{2}, 'c', 0.8,0);
+% plot_sol(sols{3}, 'b', 0.8,0);
 % 
-% OL = entry_stochastic(0, wh, ws);
-% CL = entry_stochastic(1, wh, ws);
-% %%
+% for i = 1:4
+%     figure(i)
+%     legend('Open Loop', 'Closed Loop', 'Closed Loop + Gain Opt')
+% end
+close all
+clc
+kd = 0.1; %more lift up when too much drag
+ks = -0.1;  % less lift up when too close
+kf = -50.0;% left lift up when to shallow
+K = [kd,ks,kf];
+
+disp('Open loop optimization, flown open loop')
+sols{1} = UTSolve(sols{1}); % Open loop flown open loop
+
+disp('Open loop optimization, flown with fixed gains')
+sol = UTSolve(sols{1}, K); % Open loop flown with fixed gains
+% UTPlot(sol)
+disp('Open loop optimization, flown with optimized gains')
+sol = UTSolve(sols{1}, sols{3}.u(2:4,:)); % Open loop flown with optimized gains
+% UTPlot(sol)
+disp('Closed loop optimization with fixed gains')
+sols{2} = UTSolve(sols{2}, K); % Closed loop flown with fixed gains
+% UTPlot(sol)
+disp('Closed loop optimized with fixed gains, flow with optimal gains')
+sol = UTSolve(sols{2}, sols{3}.u(2:4,:)); % Closed loop flown with fixed gains
+
+disp('Closed loop optimized jointly with gains, flown with fixed gains instead')
+sol = UTSolve(sols{3}, K); % Optimal with fixed gains
+% UTPlot(sol)
+disp('Closed loop optimized jointly with gains')
+sols{3} = UTSolve(sols{3}, sols{3}.u(2:4,:)); % Optimal with optimized gains, 1000 pts
+
+% UTPlot(sol)
+% 
+% UTPlot(sols{1})  
+% UTPlot(sols{1})
+
+UTCompare(sols{1})
+UTCompare(sols{2})
+UTCompare(sols{3})
+% UTCompare(sols{4})
+
+% 
 % OL_alt = entry_stochastic(0, 0, 0); % no cost on variances terms
 % CL_alt = entry_stochastic(1, 0, 0); % no cost on variances terms
-% 
-% 
-% %%
-% CL_dr = entry_stochastic(1, wh, ws*10); % high cost on downrange variance
-% OL_dr = entry_stochastic(0, wh, ws*10); % high cost on downrange variance
+
 
 %% Generate solutions for comparison
 % three (open loop) altitude optimal solutions with different bank angle limits
@@ -24,9 +86,9 @@ figs = {'Range','Altitude','Fpa','Control'};
 
 % Then, fly closed loop UT for all 4 profiles
 if 0
-bounds = [[0,1];[0, 1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)]];
-W = zeros(4,3);
-
+% bounds = [[0,1];[0, 1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)]];
+% W = zeros(4,3);
+% 
 % W(1,:) = [1, 0.25, 0.5];
 % % W(1,3) = 0.5;
 % cl = [1, 0, 0, 0];
@@ -37,25 +99,25 @@ W = zeros(4,3);
 %         [hm, fm, sm, hv, fv, sv]=stats(sols{i});
 %         sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
 % end
-% 
+
 % save('margin_comparison.mat','sols') % just in case, allows for reloading quickly 
 load margin_comparison
-
-for i = 1:2
+close all
+for i = 1:4
     sols{i} = UTSolve(sols{i});
     disp(sols{i}.ut.stats)
-    UTPlot(sols{i})
+%     UTPlot(sols{i})
 end
 UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
 
 close all
 plot_sol(sols{1}, 'k', 0.2, 0);
 plot_sol(sols{2}, 'c', 0.8, 0);
-% plot_sol(sols{3}, 'b', 0.8, 0);
-% plot_sol(sols{4}, 'r', 0.6, 0);
+plot_sol(sols{3}, 'b', 0.8, 0);
+plot_sol(sols{4}, 'r', 0.6, 0);
 
 j = 1;
-for i = 1:4
+for i = 1:5
     figure(i)
     legend('Stochastic CL, w_h=1, w_s=0.25', '[cos(90), cos(0)]','[cos(75), cos(15)]', '[cos(60), cos(30)]', 'location','best')
 %         saveas(gcf, [sdir,'Comparison',figs{j},'.png'])
@@ -65,14 +127,16 @@ end
 end
 %% Sweep over the weights
 
-Ws = [1.5, 2];
-Wh = 0:0.5:3;
-% sols = {};
+Ws = 0:1:3;
+Wh = 0:1:3;
+sols = {};
 for i = 1:length(Wh)
     for j = 1:length(Ws)
         wh = Wh(i);
         ws = Ws(j);
-        sols{end+1} = entry_stochastic(1, [wh, ws, 0.2], [0,1]);
+%         sols{end+1} = entry_stochastic(1, [wh, ws, 0.2], [0,1]);
+        sols{end+1} = entry_stochastic_gains([wh, ws, 0.2], [0,1]);
+
         [hm, fm, sm, hv, fv, sv]=stats(sols{end});
         sols{end}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
         close all
@@ -80,10 +144,12 @@ for i = 1:length(Wh)
 end
 
 
-save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly 
+% save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly 
+save('solutions_cl_gains_ddp.mat','sols') % just in case, allows for reloading quickly 
+
 disp(' ');
 %%
-load solutions_cl.mat
+% load solutions_cl.mat
 [n,m] = size(sols);
 for i = 1:n*m
     W(i,:) = sols{i}.weights;
@@ -95,20 +161,20 @@ nstd = 3;
 hlow = S(:,1)-nstd*S(:,4).^0.5;
 
 N = 50 ;
-xi = linspace(min(W(:,1)),max(W(:,1)),N) ;
-yi = linspace(min(W(:,2)),max(W(:,2)),N) ;
-[Xi,Yi] = meshgrid(xi,yi) ;
-Hi = griddata(W(:,1),W(:,2),hlow,Xi,Yi) ;
-Si = griddata(W(:,1),W(:,2),S(:,6).^0.5,Xi,Yi) ;
+xi = linspace(min(W(:,1)), max(W(:,1)), N) ;
+yi = linspace(min(W(:,2)), max(W(:,2)), N) ;
+[Xi, Yi] = meshgrid(xi,yi) ;
+Hi = griddata(W(:,1), W(:,2), hlow, Xi, Yi) ;
+Si = griddata(W(:,1),W (:,2), S(:,6).^0.5, Xi, Yi) ;
 
 figure
-contourf(Xi,Yi,Hi) ;
+contourf(Xi,Yi,Hi)
 xlabel('W_h');
 ylabel('W_s');
 % title('3-sigma low altitude, km')
 c = colorbar;
 ylabel(c ,[num2str(nstd),'-sigma low altitude, km'],'fontsize',16)
-saveas(gcf, [sdir,'ClosedLoopAltitude.png'])
+% saveas(gcf, [sdir,'ClosedLoopAltitude.png'])
 
 
 levels = [linspace(0,2, 20),linspace(2,5,10)];
@@ -121,7 +187,7 @@ ylabel('W_s');
 c = colorbar;
 ylabel(c ,'range error std, km','fontsize',16)
 scatter(W(:,1),W(:,2),[],'r')
-saveas(gcf, [sdir,'ClosedLoopRangeError.png'])
+% saveas(gcf, [sdir,'ClosedLoopRangeError.png'])
 
 
 [hmax,imax] = max(hlow)
@@ -260,15 +326,36 @@ grid on
 
 figure(4+figure_offset)
 hold all
-plot(v(1:end-1), sol.u, 'linewidth', 3)
+plot(v(1:end-1), sol.u(1,:), 'linewidth', 3)
 xlabel('Velocity, m/s')
 ylabel('cos(bank), -')
 grid on
 
-function sol = UTSolve(sol)
-[V,X] = UnscentedEntry(sol.X0, @(v)interp1(sol.v', [sol.u, sol.u(end)], v), 0);
+figure(5+figure_offset)
+hold all
+plot(v, sol.Dm, 'linewidth', 3)
+xlabel('Velocity, m/s')
+ylabel('Drag, m/s/s')
+grid on
+
+function sol = UTSolve(sol, K)
+%%% Integrates equations of motion for each sigma point and computes stats
+if nargin == 1
+    K = [0,0,0];
+    k = @(v) K;
+else
+   if length(K(:)) == 3 % fixed gain scenario 
+    k = @(v) K;
+   else
+       k = @(v) interp1(sol.v, [K, K(:,end)]', v);
+   end
+end
+sol.u(1,end) = sol.u(1,end-1);
+xr = @(v) interp1(sol.v, [sol.Dm; sol.mean(2:3,:)]', v);
+[V,X,U] = UnscentedEntry(sol.v, sol.X0, @(v)interp1(sol.v', [sol.u(1,:), sol.u(1,end)], v), k, sol.sigma_weights, xr);
 sol.ut.v = V;
 sol.ut.x = X;
+sol.ut.u = U;
 
 nx = length(sol.sigma_weights);
 hmean = X(:,1:nx)*sol.sigma_weights;
@@ -281,8 +368,13 @@ svar = (X(:,2*nx+1:3*nx)-smean).^2*sol.sigma_weights;
 
 sol.ut.mean = [hmean, fmean*180/pi, smean];
 sol.ut.var = [hvar, fvar*(180/pi)^2, svar];
-sol.ut.std = sol.ut.var.^2;
+sol.ut.std = sol.ut.var.^0.5;
 sol.ut.stats = [hmean(end)/1000, (hmean(end)-3*hvar(end)^0.5)/1000, 3*svar(end).^0.5]; % 3-sigma low altitude, range std
+print_header()
+disp(sol.ut.stats)
+
+function print_header()
+disp('Mean Alt, km  3sig low Alt, km  3sig DR (km)')
 
 function UTPlot(sol)
 nx = length(sol.sigma_weights);
@@ -322,20 +414,30 @@ legend('3-sigma bounds','UT Sigma Point Trajectories')
 grid on
 
 
-function sol = UTCompare(sol)
+function UTCompare(sol)
+%%% Compares unscented integration with output from DDP, assumes UTSolve
+%%% has been called with appropriate gains for comparison
 nx = size(sol.h,1);
-sol = UTSolve(sol);
+% sol = UTSolve(sol);
+disp('DDP')
+disp([sol.stats(1), sol.stats(1)-3*sol.stats(4)^0.5, 3*sol.stats(end)^0.5])
+disp("integration")
+disp(sol.ut.stats)
 
 figure
-plot(sol.v, sol.h)
+plot(sol.v, sol.h/1000)
 hold all
 plot(sol.ut.v, sol.ut.x(:,1:nx)/1000, '--')
 xlabel('Velocity')
 ylabel('Altitude, km')
+title('Dashed Lines = Integration, Solid = DDP')
+
 figure
 plot(sol.v, sol.fpa)
 hold all
 plot(sol.ut.v, sol.ut.x(:,nx+1:nx+nx), '--')
+title('Dashed Lines = Integration, Solid = DDP')
+xlabel('Velocity')
 
 figure
 plot(sol.v, sol.s)
@@ -343,3 +445,13 @@ hold all
 plot(sol.ut.v, sol.ut.x(:,2*nx+1:3*nx), '--')
 xlabel('Velocity')
 ylabel('DR')
+title('Dashed Lines = Integration, Solid = DDP')
+
+
+figure
+plot(sol.v(1:end-1), sol.u(1,:), 'k','linewidth',2)
+hold all
+plot(sol.ut.v, sol.ut.u, '--')
+xlabel('Velocity')
+ylabel('Control')
+title('Dashed Lines = Integration, Solid = DDP')

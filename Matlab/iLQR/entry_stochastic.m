@@ -1,6 +1,6 @@
 function sol = entry_stochastic(closed_loop, W, bounds)
 % A demo of iLQG/DDP with stochastic entry dynamics
-clc;
+% clc;
 % close all
 
 fprintf(['\nUse of the iLQG algorithm '...
@@ -18,8 +18,8 @@ n_states = 3;
 full_DDP = 1;
 if nargin == 0
     closed = 1;
-    wh = 3;
-    ws = 0.0;
+    wh = 2;
+    ws = 1;
     wu = 0.2;
     bounds = [0 1];
 else
@@ -34,9 +34,10 @@ end
 hscale = 120e3;
 vscale = 5500;
 fpascale = 0.2;
-rangescale = 500;
+rangescale = 500e3;
 scale = [hscale, vscale, fpascale, rangescale];
-v0 = 5461.4;
+% v0 = 5461.4;
+v0 = 5525;
 
 % set up the optimization problem
 DYNCST  = @(x,u,i) entry_dyn_cst(x,u,full_DDP);
@@ -46,7 +47,8 @@ T       = 1000;              % horizon
 ds      = dV/T;
 
 % Initial States
-x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0]';   % nominal initial state
+% x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0]';   % nominal initial state
+x0 = [0 , 51.5356e3/hscale, (-11.2179428280964*pi/180)/fpascale, 0]';
 % n_samples = 3;
 % delta = zeros(3, n_samples);
 % delta(2,:) = [0, -1, 1];
@@ -54,7 +56,7 @@ x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0]';   % nominal init
 % weights = ones(n_samples,1)/n_samples;
 % X0_vector = [0;X0(:)];
 
-[X0, weights] = UnscentedTransform(x0(2:end), diag([2500/hscale, 0.25*pi/180/fpascale, 10/rangescale]).^2, 0);
+[X0, weights] = UnscentedTransform(x0(2:end), diag([2500/hscale, 0.25*pi/180/fpascale, 5e3/rangescale]).^2, 4);
 n_samples = length(weights);
 X0 = [zeros(n_samples,1), X0'];
 X0_vector = X0(n_samples:end)';
@@ -64,7 +66,7 @@ fprintf(['Samples = ',num2str(n_samples),'\nTotal State Dimension = ',num2str(1+
 % Initial Control
 % u0      = ones(1,floor(T))*0.4;
 % u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
-u0 = linspace(0, 1, T);
+u0 = linspace(0.35, 1, T);
 % u0 = linspace(1, 0, T);
 
 
@@ -75,21 +77,16 @@ Op.parallel = 0;
 
 
 % === run the optimization!
-[x, u, L, Vx, Vxx, cost] = iLQG(DYNCST, X0_vector, u0, Op);
-% if ~full_DDP  % additional DDP iters after iLQR
-%     Op.maxIter = 50;
-%     full_DDP = 1;
-%     [x, u, L, Vx, Vxx, cost] = iLQG(DYNCST, X0_vector, u, Op);
-% end
+[x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, u0, Op);
 
-
-% [h,v,fpa,s] = get_states(x);
+% Compute stats and setup the output structure 
 [h,v,fpa,s,~,L,D] = entry_accels(x);
 v=v';
+s = s/1000;
 [hm, hv] = get_stats(h);
 [sm, sv] = get_stats(s);
 [fm, fv] = get_stats(fpa);
-[Dm,Dv] = get_stats(D);
+[Dm, Dv] = get_stats(D);
 
 sol.u = u;
 sol.v = v;
@@ -106,6 +103,9 @@ sol.ddp = full_DDP;
 sol.sigma_weights = weights;
 sol.L = L;
 sol.D = D;
+sol.Dm = Dm;
+sol.Dv = Dv;
+
 
 print_stats(x(:,end));
 lw = 2;
@@ -141,7 +141,6 @@ fill(x2, inBetween, 'c');
 hold all
 plot(v, D', 'k--','linewidth', 1)
 plot(v, Dm, 'm', 'linewidth', lw)
-
 xlabel('Velocity, m/s')
 ylabel('Drag, m/s^2')
 grid on
@@ -154,19 +153,20 @@ rp = 3396.2e3;
 m = 7200;
 S = 15.8;
 mu = 4.2830e13;
+rho0 = 0.0158;
 
 % states
 [h,v,fpa,s] = get_states(x);
 
 % Accels
-rho = 0.0158*exp(-h/9354.5);
+rho = rho0*exp(-h/9354.5);
 f = 0.5*rho.*v.^2 * S/m;
 D = f*cd;
 L = f*cl;
 g = mu./(rp+h).^2;
 
 function y = entry_dynamics(x,u)
-global ds full_DDP hscale vscale fpascale rangescale n_states n_samples closed
+global ds full_DDP scale n_states closed
 
 % === states and controls:
 % x = [h dv gamma]'
@@ -186,40 +186,27 @@ if closed
     kf = 1*-50.0;% left lift up when to shallow
     
     ef = get_error(fpa);
-    es = get_error(s);
+    es = get_error(s/1000);
     eD = get_error(D);
     du = kd*eD + ks*es + kf*ef;
-    
-    %     if size(h,2) > 1 % derivative calculations
-    % %         n = 4*u.*(1-u);
-    % %         u_cl = u + n.*du; % unconstrained feedback with heuristic gain to zero
-    %         u_cl = smooth_sat(u + du); % cosh
-    %
-    %     else
-    
-    %         du = kd*eD + ks*es + kf*ef;
-    %         u_cl = Saturate(u+du, 0, 1);
             u_cl = smooth_sat(u + du); % cosh
 %     u_cl = smooth_sat2(u + du); % sqrt
-    
-    
-    %     end
     
 else
     u_cl = u;
 end
 
 % Derivs
-sdot = v.*cos(fpa)/1000; % in km
+sdot = v.*cos(fpa); % in km
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
 % fpadot = L./v.*u_cl.^(1+full_DDP) + (v./(rp+h) - g./v).*cos(fpa);
 fpadot = L./v.*u_cl + (v./(rp+h) - g./v).*cos(fpa);
 
-xdot = [hdot/hscale; fpadot/fpascale; sdot/rangescale];            % change in state
+xdot = [hdot/scale(1); fpadot/scale(3); sdot/scale(4)];            % change in state
 
 dt = -ds./vdot;   % just for estimate
-y  = x + [ds/vscale+v*0; xdot.*repmat(dt, n_states, 1)];  % new state
+y  = x + [ds/scale(2)+v*0; xdot.*repmat(dt, n_states, 1)];  % new state
 
 function y = smooth_sat(x)
 K = 20;
@@ -313,6 +300,8 @@ else
     fx      = J(:,ix,:);
     fu      = J(:,iu,:);
     
+%     J2 = EntryJacobian(x, u, 0);
+    
     % dynamics second derivatives
     if full_DDP
         N_J = size(J);
@@ -350,6 +339,35 @@ else
 end
 
 
+function J = EntryJacobian(x, u, dv)
+%%% Jacobian of longitudinal entry dynamics [h,fpa,s] written wrt to velocity
+%%% as the independent variable. Also includes control jacobian. 
+
+% constants
+hs = 9354.5;
+cd  = 1.46;
+cl  = 0.35;
+rp = 3396.2e3;
+m = 7200;
+S = 15.8;
+mu = 4.2830e13;
+rho0 = 0.0158;
+
+[h,v,fpa,s,g,L,D] = entry_accels(x);
+r = h + rp;
+
+% velocity rate  = 1 wrt velocity 
+J0 = 0*h;
+
+% altitude rate terms
+J11 = -(v.*sin(fpa).*((2*mu*sin(fpa))./r.^3 + (S*cd*rho0*v.^2.*exp(-h./hs))./(2*hs*m)))./((mu.*sin(fpa))./(h + rp).^2 + (S*cd*rho0.*v.^2.*exp(-h./hs))./(2*m)).^2;
+J12 = (mu.*v.*cos(fpa).*sin(fpa))./(r.^2.*((mu.*sin(fpa))./(r).^2 + (S*cd*rho0*v.^2.*exp(-h./hs))./(2*m)).^2) - (v.*cos(fpa))./((mu.*sin(fpa))./(r).^2 + (S*cd*rho0.*v.^2.*exp(-h./hs))./(2*m));
+J13 = 0*h;
+J14 = 0*h;
+
+J = [J11; J12; J13; J14];
+
+
 function J = finite_difference(fun, x, h)
 % simple finite-difference derivatives
 % assumes the function fun() is vectorized
@@ -376,7 +394,7 @@ function J = complex_difference(fun, x)
 h = 0.00001j;
 
 [n, K]  = size(x);
-H       = [h*eye(n)];
+H       = h*eye(n);
 H       = permute(H, [1 3 2]);
 X       = pp(x, H);
 X       = reshape(X, n, K*n);
@@ -390,9 +408,6 @@ J       = permute(J, [1 3 2]);
 function c = pp(a,b)
 c = bsxfun(@plus,a,b);
 
-function c = tt(a,b)
-c = bsxfun(@times,a,b);
-
 
 function [h,v,fpa,s] = get_states(x)
 global scale n_samples v0
@@ -404,8 +419,8 @@ is = n_samples + ig;
 
 h = x(ih,:)*scale(1); % m
 v = v0 - x(iv,:)*scale(2); % m/s
-fpa = x(ig,:)*scale(3);
-s = x(is,:)*scale(4); % km
+fpa = x(ig,:)*scale(3); % rad
+s = x(is,:)*scale(4); % m
 
 
 function [m,v] = get_stats(x)
@@ -421,7 +436,7 @@ function print_stats(x)
 [h,~,~,s] = get_states(x);
 
 [hm, hv] = get_stats(h/1000);
-[sm, sv] = get_stats(s);
+[sm, sv] = get_stats(s/1000);
 
 disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km'])
 disp(['sf = ',num2str(sm),' +/- 3*', num2str(sv^0.5),' km'])
