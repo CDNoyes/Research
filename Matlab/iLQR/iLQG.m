@@ -82,11 +82,11 @@ function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
 %---------------------- user-adjustable parameters ------------------------
 defaults = {'lims',           [],...            control limits
             'parallel',       true,...          use parallel line-search?
-            'Alpha',          10.^linspace(0,-3,15),... backtracking coefficients
+            'Alpha',          10.^linspace(0.75,-3,11),... backtracking coefficients
             'tolFun',         1e-7,...          reduction exit criterion
             'tolGrad',        1e-4,...          gradient exit criterion
             'maxIter',        500,...           maximum iterations            
-            'lambda',         1,...             initial value for lambda
+            'lambda',         10.0,...             initial value for lambda
             'dlambda',        1,...             initial value for dlambda
             'lambdaFactor',   1.6,...           lambda scaling factor
             'lambdaMax',      1e10,...          lambda maximum value
@@ -149,9 +149,6 @@ if size(x0,2) == 1
     for alpha = 1:Op.Alpha 
         [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
         % simplistic divergence test
-        cost_init(end+1) = sum(cost);
-        u_init{end+1} = un;
-        x_init{end+1} = x;
 
         if all(abs(x(:)) < 1e8)
             u = un;
@@ -471,7 +468,7 @@ end
 function [h,v,fpa,s] = get_states(x)
 global scale n_samples v0
 iv = 1;
-ih = iv + 1:n_samples;
+ih = iv + (1:n_samples);
 ig = n_samples + ih;
 is = n_samples + ig;
 
@@ -540,6 +537,11 @@ for i = N-1:-1:1
     if ~isempty(fuu)
         QuuF = QuuF + fuuVx;
     end
+    
+    % Optional, try the saddle free thing and form abs value of Quuf
+%     eigvals
+%     [v,e] = eig(QuuF);
+%     QuuF = v*abs(e)*v';
     
     if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
         % no control limits: Cholesky decomposition, check for non-PD
