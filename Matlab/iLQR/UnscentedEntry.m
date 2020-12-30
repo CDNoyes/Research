@@ -15,10 +15,10 @@ end
 
 function [h,fpa,s,g,L,D] = entry_accels(v,x)
 % constants
-cd  = 1.46;
-cl  = 0.35;
+cd  = 1.408;
+cl  = 0.357;
 rp = 3396.2e3;
-m = 7200;
+m = 5000;
 S = 15.8;
 mu = 4.2830e13;
 
@@ -52,10 +52,9 @@ kf = k(3);
 
 % Ref, aka mean from the optimization routine 
 xr = Xr(v);
+eD = D - xr(1);
 ef = fpa-xr(2);
 es = s - xr(3);
-eD = D - xr(1);
-
 
 du = kd*eD + ks*es + kf*ef;
 % u_cl = Saturate(u(v)+du, 0, 1);
@@ -94,7 +93,7 @@ s = x(is,:); % km
 
 
 function y = smooth_sat(x)
-K = 20;
+K = 5;
 q = 2*x - 1;
 y =  0.5/K * log(cosh(K*(q+1))./cosh(K*(q-1))); % saturates between [-1,1]
 y = 0.5 + 0.5*y; % map back to [0,1]

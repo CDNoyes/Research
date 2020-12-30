@@ -12,8 +12,9 @@ fprintf(['\nA demonstration of the iLQG algorithm '...
 % dynamics. This will make iterations more expensive, but
 % final convergence will be much faster (quadratic)
 
-global hscale vscale fpascale ds v0 rangescale full_DDP
-full_DDP = 1;
+global hscale vscale fpascale ds v0 rangescale full_DDP QN
+full_DDP = 0;
+QN = 0;
 
 hscale = 120e3;
 vscale = 5500;
@@ -41,7 +42,13 @@ Op.parallel = 0;
 
 
 % === run the optimization!
+if QN
+    [x, u, L, Vx, Vxx, cost, trace, stop] = QNDDP(DYNCST, x0, u0, Op);
+
+else
 [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
+    
+end
 
 h = x(1,:)*hscale/1000;
 v = v0 - x(2,:)*vscale;
@@ -70,7 +77,7 @@ global hscale vscale v0
 cd  = 1.46;
 cl  = 0.35;
 rp = 3396.2e3;
-m = 7200;
+m = 5000;
 S = 15.8;
 mu = 4.2830e13;
 

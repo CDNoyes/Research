@@ -1,26 +1,33 @@
-function sol = entry_stochastic(input)
+function sol = entry_stochastic_gains(input)
+% A demo of iLQG/DDP with stochastic entry dynamics and joint gain
+% optimization
+% clc;
+% close all
+
 fprintf(['\nUse of the iLQG algorithm '...
-    'with entry dynamics, velocity loss as independent variable.\n'])
+    'with entry dynamics, velocity loss as independent variable.\n'...
+    'Performing joint gain optimization.\n'])
 
 % Set full_DDP=true to compute 2nd order derivatives of the
 % dynamics. This will make iterations more expensive, but
 % final convergence will be much faster (quadratic)
 
-global ds v0 full_DDP n_samples n_states scale weights closed wh ws wu gains QN
+global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu
 % note: weights are the sigma point weights
 % w_ are the cost weights
 
 n_states = 3;
+n_controls = 4; % open loop + 3 feedback terms 
+
 if nargin == 0
-    input = DDPInput([2, 2, 0.2]);
+    input = DDPInput([2, 1, 0.2]);
+    input.ut_scale = 5;
+
 end
-closed = input.closed_loop;
+full_DDP = input.ddp;
 wh = input.weights(1);
 ws = input.weights(2);
 wu = input.weights(3);
-full_DDP = input.ddp;
-gains = @(v) input.gains;
-QN = input.qn;
 
 % Scale states for numerical condition
 hscale = 120e3;
@@ -28,10 +35,11 @@ vscale = 5500;
 fpascale = 0.2;
 rangescale = 500e3;
 scale = [hscale, vscale, fpascale, rangescale];
+
 v0 = input.v0;
 
 % set up the optimization problem
-DYNCST  = @(x,u,i) entry_dyn_cst(x, u, full_DDP,i);
+DYNCST  = @(x,u,i) entry_dyn_cst(x, u, full_DDP);
 V       = input.vf; % terminal velocity, m/s
 dV      = v0-V;
 T       = input.horizon;              % horizon
@@ -52,40 +60,38 @@ fprintf(['Samples = ',num2str(n_samples),'\nTotal State Dimension = ',num2str(1+
 % Initial Control
 % u0      = ones(1,floor(T))*0.4;
 % u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
+% u0 = [linspace(0.35, 1, T-200), ones(1,200)];
 u0 = linspace(0.35, 1, T);
-% u0 = linspace(1, 0, T);
 
+kd = input.gains(1); 
+ks = input.gains(2);  
+kf_scale = 200; % dont touch this
+kf = input.gains(3)/kf_scale;
 
-Op.lims  = input.bounds;
+L = ones(T,1);
+% L = linspace(1, 2, T)';
+K0 = [L*kd, L*ks, L*kf]';
+% K0 = 0*K0;
+
+% Op.lims  = [input.bounds; [0,1]; [-1,0];[-200, 0]/kf_scale]; % final gain is scaled in dynamics
+Op.lims  = [input.bounds; [-0.25,1]; [-0.5, 0.1];[-100, 50]/kf_scale]; % allow 'bad' sign gains
+
 Op.plot = input.running_plots;               % plot the derivatives as well
 Op.maxIter = input.max_iterations;
 Op.parallel = 1;
-Op.regType = 1; % default 1
 
-% Kopt = optimize_gain(X0_vector, u0);
-LQR = 1;
-if LQR
-    initialize_gains(X0_vector, u0)
-end
-x = forward_pass(X0_vector, u0, [], T);
-u = u0;
-cost = 0;
-ddp_gains = [];
 
 % === run the optimization!
-% if QN
-%     [x, u, ddp_gains, ~, ~, cost] = QNDDP(DYNCST, X0_vector, u0, Op);
-% else
-%     [x, u, ddp_gains, ~, ~, cost] = iLQG(DYNCST, X0_vector, u0, Op);
-% end
+[x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, [u0;K0], Op);
 
-% Kopt = optimize_gain(X0_vector, u);
-% sol.gains = Kopt;
 
 % Compute stats and setup the output structure 
 [h,v,fpa,s,~,L,D] = entry_accels(x);
+
 v=v';
 s = s/1000;
+u(4,:) = u(4,:)*kf_scale; % allows the gains to be used outside this program
+
 [hm, hv] = get_stats(h);
 [sm, sv] = get_stats(s);
 [fm, fv] = get_stats(fpa);
@@ -101,6 +107,7 @@ sol.s = s;
 sol.weights = [wh,ws,wu];
 sol.cost = sum(cost);
 sol.X0 = [h(:,1)',fpa(:,1)',s(:,1)'];
+sol.P0 = P0;
 sol.input = input;
 sol.sigma_weights = weights;
 sol.L = L;
@@ -108,12 +115,12 @@ sol.D = D;
 sol.Dm = Dm;
 sol.Dv = Dv;
 
-
 print_stats(x(:,end));
-lw = 2;
-return
-if input.terminal_plots
 
+% Plots
+lw = 2;
+
+if input.terminal_plots
     figure
     x2 = [v', fliplr(v')];
     inBetween = [(sm-3*sv.^0.5), fliplr((sm+3*sv.^0.5))];
@@ -147,24 +154,17 @@ if input.terminal_plots
     xlabel('Velocity, m/s')
     ylabel('Drag, m/s^2')
     grid on
-    
-    G = squeeze(ddp_gains(1,2:end,1:end-1));
-    G = reshape(G, n_samples, n_states, input.horizon-1);
-    G = squeeze(get_stats(G));
-    
-%     G0 = squeeze(ddp_gains(1,2:n_samples:end,1:end-1));
-    
+
     figure
     plot(v(1:end-2), u(1,1:end-1), 'k', 'linewidth', lw)
     hold all
-%     plot(v(1:end-2), G/100, 'linewidth', 1)
-%     plot(v(1:end-2), G0/100, '--','linewidth', 1)
-
+    us = u;
+    us(end,:) = us(end,:)/kf_scale;
+    plot(v(1:end-2), us(2:end,1:end-1), 'linewidth', 1)
     xlabel('Velocity, m/s')
     ylabel('Controls')
-%     legend('Open Loop',['K / ',num2str(100)])
-    grid on    
-
+    legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
+    grid on
 end
 
 function [h,v,fpa,s,g,L,D] = entry_accels(x)
@@ -175,24 +175,23 @@ rp = 3396.2e3;
 m = 5000;
 S = 15.8;
 mu = 4.2830e13;
-rho0 = 0.0158;
 
 % states
 [h,v,fpa,s] = get_states(x);
 
 % Accels
-rho = rho0*exp(-h/9354.5);
+rho = 0.0158*exp(-h/9354.5);
 f = 0.5*rho.*v.^2 * S/m;
 D = f*cd;
 L = f*cl;
 g = mu./(rp+h).^2;
 
-function y = entry_dynamics(x,u)
-global ds full_DDP scale n_states closed gains
+function y = entry_dynamics(x,U)
+global ds scale n_states
 
 % === states and controls:
 % x = [h dv gamma]'
-% u = [u]'     = [cos(bank)]
+% u = [cos(bank), K1, K2, K3]'
 
 % constants
 rp = 3396.2e3;
@@ -200,32 +199,19 @@ rp = 3396.2e3;
 % states + current accelerations
 [h,v,fpa,s,g,L,D] = entry_accels(x);
 
+% u = U(1,:);
+% K = U(2:4,:);
+
 % feedback terms
-if closed
-    % Tuned for decent performance in the guess trajectory
-    K = gains(real(v));
-%     kd = K(:,1);
-%     ks = K(:,2);
-%     kf = K(:,3);
-%     kd = gains(1); %more lift up when too much drag
-%     ks = gains(2);  % less lift up when too close
-%     kf = gains(3);% left lift up when to shallow
-    
-    ef = get_error(fpa);
-    es = get_error(s/1000);
-    eD = get_error(D);
-    N = size(ef,1);
-    du = eD.*repmat(K(:,1)',N,1) + es.*repmat(K(:,2)',N,1) + ef.*repmat(K(:,3)',N,1); % NOTE TO SELF: Remove a mult by 200 on ef when I added LQR gains
-%     u_cl = Saturate(u+du,0,1);
-    du = Saturate(du,-1,1);
-    u_cl = smooth_sat(u + du); % cosh
-    
-else
-    u_cl = u;
-end
+ef = get_error(fpa);
+es = get_error(s/1000);
+eD = get_error(D);
+du = U(2,:).*eD + U(3,:).*es + U(4,:).*ef*200;
+u_cl = smooth_sat(U(1,:) + du); % cosh
+
 
 % Derivs
-sdot = v.*cos(fpa); % in km
+sdot = v.*cos(fpa); 
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
 fpadot = L./v.*u_cl + (v./(rp+h) - g./v).*cos(fpa);
@@ -241,12 +227,10 @@ q = 2*x - 1;
 y =  0.5/K * log(cosh(K*(q+1))./cosh(K*(q-1))); % saturates between [-1,1]
 y = 0.5 + 0.5*y; % map back to [0,1]
 
+
 function er = get_error(state)
-% er = [state(1,:)*0; state(2:end,:)-state(1,:)]; % subtracts the 'prime' point from the rest
 er = state - get_stats(state);
-% in reality this should be the mean subtracted from all the points
-
-
+% the mean subtracted from all the points
 
 function c = entry_cost(x, u)
 global ds wh ws wu
@@ -254,17 +238,17 @@ global ds wh ws wu
 cost_scale = 10000;
 
 % states
-[h,v,fpa,s,g,L,D] = entry_accels(x);
+[h,v,fpa,s,g,~,D] = entry_accels(x);
 
 % cost function
-% sum of 3 terms:
+% sum of terms:
 % lu: quadratic cost on controls
-% lf: final cost
 % lx: running cost on altitude loss
 
+
+% Don't delete these two lines even if unused 
 final = isnan(u(1,:));
 u(:,final)  = 0;
-
 
 % running cost terms
 hdot = v.*sin(fpa);
@@ -273,8 +257,8 @@ hprime = hdot./vdot * ds; %it's actually -hdot over -vdot
 hprime = get_stats(hprime); % expected value of running cost
 
 sdot = v.*cos(fpa); % meters/second
-[smean, svar] = get_stats(s);
-[hmean, hvar] = get_stats(h);
+[smean, svar] = get_stats(s); % m
+[hmean, hvar] = get_stats(h); % m
 
 vs_dot = -2*get_stats(s.*sdot./vdot) + 2*smean.*get_stats(sdot./vdot);
 vh_dot = -2*get_stats(h.*hdot./vdot) + 2*hmean.*get_stats(hdot./vdot);
@@ -286,24 +270,16 @@ vh_dot = 0.5*vh_dot./(hvar.^0.5);
 lx = hprime + ws*vs_dot*ds + wh*vh_dot*ds;
 
 % control cost
-lu    = wu*(u-0.5).^2 * ds.* v/2500; % this term is for smoothness
-
-% final cost
-if any(final)
-    llf = 0*s;
-    %        llf      = ws*1000*svar.^0.5 + wh*hvar.^0.5;
-    lf = zeros(size(u));
-    lf(1,final)= llf(1,final);
-else
-    lf    = 0;
-end
+lu    = wu*(u(1,:)-0.5).^2 * ds.* v/2500; % this term is for smoothness
+% lu    = wu*(sum(u(2:end,:).^2,1)+ (u(1,:)-0.5).^2) * ds.* v/2500; % terms
+% on gains don't seem to help much 
 
 % total cost
-c     = (lu + lx + lf)/cost_scale;
+c     = (lu + lx)/cost_scale;
 
 
-function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP,iter)
-global n_states n_samples QN
+function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP)
+global n_states n_samples n_controls
 % combine dynamics and cost
 % use helper function finite_difference() to compute derivatives
 
@@ -311,29 +287,27 @@ if nargout == 2
     f = entry_dynamics(x,u);
     c = entry_cost(x,u);
 else
-    
-    update_gains(x,u)
-    
     % state and control indices
     ix = 1:(1+n_states*n_samples);
-    iu = ix(end)+1;
+    iu = ix(end) + (1:n_controls);
     
     % dynamics first derivatives
     xu_dyn  = @(xu) entry_dynamics(xu(ix,:),xu(iu,:));
     J       = complex_difference(xu_dyn, [x; u]);
     fx      = J(:,ix,:);
     fu      = J(:,iu,:);
-        
+    
     % dynamics second derivatives
-    if full_DDP || (QN && iter <= 2) 
+    if full_DDP
         if 1
             N_J = size(J);
             xu_Jcst = @(xu) complex_difference(xu_dyn, xu);
             JJ      = finite_difference(xu_Jcst, [x; u]);
+            %         JJ      = reshape(JJ, [4 6 size(J)]); % Original code
             if N_J <= 2
-                JJ = reshape(JJ,[ix(end) iu N_J(2)]);
+                JJ = reshape(JJ,[ix(end) iu(end) N_J(2)]);
             else
-                JJ = reshape(JJ, [ix(end) iu N_J(2) N_J(3)]);
+                JJ = reshape(JJ, [ix(end) iu(end) N_J(2) N_J(3)]);
             end
             JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
             fxx     = JJ(:,ix,ix,:);
@@ -343,11 +317,10 @@ else
             u_dyn  = @(u) entry_dynamics(repmat(x,1,size(u,2)/size(x,2)), u);
             u_Jcst = @(u) complex_difference(u_dyn, u);
             fuu = finite_difference(u_Jcst, u);
-            fuu = reshape(fuu, [ix(end) 1 1 size(J,3)]);
+            fuu = reshape(fuu, [ix(end) 4 4 size(J,3)]);
             fuu = 0.5*(fuu + permute(fuu,[1 3 2 4]));
             fxx = [];
-            fxu = []; 
-            
+            fxu = [];  
             
         end
     else
@@ -360,20 +333,14 @@ else
     cx      = J(ix,:);
     cu      = J(iu,:);
     
-    if QN && iter > 2
-        % if not QuasiNewton, otherwise, these can also be approximated, right?
-        % we can either compute first iteration (probably wise)
-        % or set to zero or identity for first iteration 
-        [cxx,cxu,cuu] = deal([]);
-    else
-        %     cost second derivatives
-        xu_Jcst = @(xu) squeeze(complex_difference(xu_cost, xu));
-        JJ      = finite_difference(xu_Jcst, [x; u]);
-        JJ      = 0.5*(JJ + permute(JJ,[2 1 3])); %symmetrize
-        cxx     = JJ(ix,ix,:);
-        cxu     = JJ(ix,iu,:);
-        cuu     = JJ(iu,iu,:);
-    end
+    %     cost second derivatives
+    xu_Jcst = @(xu) squeeze(complex_difference(xu_cost, xu));
+    JJ      = finite_difference(xu_Jcst, [x; u]);
+    JJ      = 0.5*(JJ + permute(JJ,[2 1 3])); %symmetrize
+    cxx     = JJ(ix,ix,:);
+    cxu     = JJ(ix,iu,:);
+    cuu     = JJ(iu,iu,:);
+    
     [f,c] = deal([]);
 end
 
@@ -418,7 +385,6 @@ J       = permute(J, [1 3 2]);
 function c = pp(a,b)
 c = bsxfun(@plus,a,b);
 
-
 function [h,v,fpa,s] = get_states(x)
 global scale n_samples v0
 
@@ -429,7 +395,7 @@ is = n_samples + ig;
 
 h = x(ih,:)*scale(1); % m
 v = v0 - x(iv,:)*scale(2); % m/s
-fpa = x(ig,:)*scale(3); % rad
+fpa = x(ig,:)*scale(3);
 s = x(is,:)*scale(4); % m
 
 
@@ -441,7 +407,6 @@ if nargout > 1
     v = sum(weights.*(x-m).^2, 1);
 end
 
-
 function print_stats(x)
 [h,~,~,s] = get_states(x);
 
@@ -450,70 +415,3 @@ function print_stats(x)
 
 disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km'])
 disp(['sf = ',num2str(sm),' +/- 3*', num2str(sv^0.5),' km'])
-
-function std = gain_opt_obj(x0, u, K, N)
-
-x = forward_pass(x0, u, K, N);
-[h,v,fpa,s,g,L,D] = entry_accels(x(:,end));
-[~,std] = get_stats(s(:,end));
-[~,hstd] = get_stats(h(:,end));
-std = std + 0.1*hstd;
-
-function x = forward_pass(x0, u, K, N)
-global gains
-if ~isempty(K)
-    gains = @(V) K;
-end
-x = x0(:);
-
-for i = 1:N-1
-    x(:,i+1) = entry_dynamics(x(:,i), u(i));
-end
-
-function initialize_gains(x0, u0)
-global gains
-x = forward_pass(x0, u0, gains(0), length(u0));
-update_gains(x,u0);
-
-function update_gains(x,u)
-global gains
-
-[h,v,fpa,s,g,L,D] = entry_accels(x);
-
-% LQR
-if 0
-% This expects UNSCALED states
-[A,B] = EntryJacobians([v;get_stats(h);get_stats(fpa);get_stats(s)], u, 1);
-
-Qf = diag([0, 0, 100]).^2;
-Q  = diag([0.01, 1, 1]).^2;
-R  = 1e3;
-
-K = LQRGains(A,B,Qf,Q,R); % gains in h, fpa, s
-
-else % Apollo Gains
-t = cumtrapz(v, -1./get_stats(D+g.*sin(fpa)));
-[A,B] = EntryJacobians([v;get_stats(h);get_stats(fpa);get_stats(s)], u, 0);
-
-K = ApolloGains(t,v,[get_stats(h);get_stats(fpa);get_stats(s)],u,get_stats(L),get_stats(D),A,B); % gains in h, fpa, s    
-    
-end
-
-K(1,:) = -K(1,:)*9354.5./get_stats(D); % gain in Drag 
-K(3,:) = K(3,:)*1000;
-if 1
-    figure
-    plot(v, K')
-    legend('Drag','FPA','Range')
-    grid on
-end
-
-gains = @(vn) interp1(v, K', vn);
-
-function Kopt = optimize_gain(x0, u)
-options = optimoptions('fminunc');
-% options.Algorithm = 'trust-region';
-N = length(u);
-obj = @(K) gain_opt_obj(x0, u, K, N);
-
-Kopt = fminunc(obj, [0.1, -0.1, -4], options);
