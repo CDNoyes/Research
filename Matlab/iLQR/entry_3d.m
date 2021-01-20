@@ -1,102 +1,113 @@
-function sol=entry_vel(inp)
-% A demo of iLQG/DDP with car-parking dynamics
+function sol = entry_3d(inp, lagrange, penalty)
+% Nominal 3D Entry Dynamics (downrange instead of longitude is used)
+% Allows for iterations with different values of the lagrange multiplier
+% and penalty value 
 
-
-fprintf(['\nA demonstration of the iLQG algorithm '...
-    'with entry dynamics, velocity loss as independent variable.\n'...
-    'for details see\nTassa, Mansard & Todorov, ICRA 2014\n'...
-    '\"Control-Limited Differential Dynamic Programming\"\n'])
 
 % Set full_DDP=true to compute 2nd order derivatives of the
 % dynamics. This will make iterations more expensive, but
 % final convergence will be much faster (quadratic)
+
 if nargin == 0
     inp = DDPInput([0,0,0]);
-    
+    lagrange = 0;
+    penalty = 0.1;
 end
+
+% state vector: [h, theta, phi, v, gamma, psi]
+
+
 global scale ds
 full_DDP = 1;
 
 hscale = 120e3;
 vscale = 5500;
 fpascale = 0.2;
-v0 = inp.v0;
+v0 = 5525;
 rangescale = 500e3;
-scale = [hscale, vscale, fpascale, rangescale];
+scale = [hscale, rangescale, 1, vscale, fpascale, 1];
 
 % set up the optimization problem
-DYNCST  = @(x,u,i) entry_dyn_cst(x,u,full_DDP);
-V       = inp.vf; % terminal velocity, m/s
+DYNCST  = @(x,u,i) entry_dyn_cst(x,u,full_DDP,lagrange,penalty);
+V       = 460; % terminal velocity, m/s
 dV      = V-v0;
 T       = inp.horizon;              % horizon
 ds      = dV/T;
 
-x0      = [39.4497e3, v0, (-10.604*pi/180), 0]'./scale';   % initial state
-% u0      = ones(1,floor(T));    % initial controls
-% u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
-u0 = linspace(0, 1, T);
+x0      = [54.5e3/hscale, 0, 0, v0/vscale, (-11.5*pi/180)/fpascale, 0]';   % initial state
+if isfield(inp, 'guess') && ~isempty(inp.guess)
+    u0 = inp.guess;
+else
+%     u0 = acos(ones(1,floor(T))*0.7).*sin(linspace(0,2*pi,T))*0;
+    u0 = ones(1,T);
+end
 
-Op.lims  = inp.bounds;         % cosbank angle limits
+Op.lims  = [-90*pi/180 90*pi/180];         % angle limits (radians)
 Op.plot = inp.running_plots;               % plot the derivatives as well
-Op.maxIter = 50;
+Op.maxIter = inp.max_iterations;
 Op.parallel = 1;
 
 
 % === run the optimization!
 
-[x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
+    [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
     
 [g,L,D] = entry_accels(x);
+h = x(1,:)*scale(1);
+s = x(2,:)*scale(2)/1000; 
+phi = x(3,:)*scale(3);
+v = x(4,:)*scale(4);
+fpa = x(5,:)*scale(5);
+psi = x(6,:)*scale(6);
+% s = 3396.2*theta; % TODO compute the actual traj length
 
-h = x(1,:)*hscale/1000;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
-s = x(4,:)*rangescale/1000;
+constraint = entry_constraints(x,u);
 
-disp(['hf = ',num2str(h(end)),' km'])
+disp(['hf = ',num2str(h(end)/1000),' km'])
 disp(['Vf = ',num2str(v(end)),' m/s'])
 disp(['sf = ',num2str(s(end)),' km'])
+disp(['final crossrange = ',num2str(-phi(end)*3396.2),' km'])
 
+if inp.terminal_plots
+    figure
+    plot(s, h/1000)
+    xlabel('Downrange km')
+    ylabel('Altitude km')
+    grid on
+
+    figure
+    plot(v, h/1000)
+    xlabel('Velocity m/s')
+    ylabel('Altitude km')
+    grid on
+end
 
 sol.u = u;
 sol.v = v;
-sol.mean = [h*1000; fpa; s];
-sol.h = h*1000;
-sol.fpa = fpa;
-sol.s = s;
-sol.weights = [0,0,0];
+sol.state = [h; s; phi; v; fpa; psi];
+% sol.h = h;
+% sol.fpa = fpa;
+% sol.s = s;
+% sol.weights = [wh,ws,wu];
 sol.cost = sum(cost);
-sol.X0 = [h(1),fpa(1),s(1)];
-sol.input = inp;
-sol.sigma_weights = 1;
+sol.constraint = constraint(:,end); 
+sol.inp = inp;
 sol.L = L;
 sol.D = D;
 
-if inp.terminal_plots
-figure
-plot(s, h)
-xlabel('Downrange km')
-ylabel('Altitude km')
-grid on
-
-figure
-plot(v, h)
-xlabel('Velocity m/s')
-ylabel('Altitude km')
-grid on
-end
 
 function [g,L,D] = entry_accels(x)
 global scale
 % constants
-[m,S,cl,cd] = aero_coeff();
-
+ [cl,cd] = aero_coeff();
+%  cd  = 1.408;
+% cl  = 0.357;
 rp = 3396.2e3;
 mu = 4.2830e13;
 
 % states
 h = x(1,:)*scale(1);
-v = x(2,:)*scale(2);
+v = x(4,:)*scale(4);
 
 % Accels
 rho = 0.0158*exp(-h/9354.5);
@@ -106,55 +117,58 @@ L = f*cl;
 g = mu./(rp+h).^2;
 
 function y = entry_dynamics(x,u)
-global scale ds
+global ds scale
 
 % === states and controls:
 % x = [h dv gamma]'
 % u = [u]'     = [cos(bank)]
-hscale = scale(1);
-vscale = scale(2);
-fpascale = scale(3);
-rangescale = scale(4);
 
 % constants
 rp = 3396.2e3;
 
 % states
-h = x(1,:)*hscale;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
+h = x(1,:)*scale(1);
+% theta = x(2,:); 
+phi = x(3,:)*scale(3);
+v = x(4,:)*scale(4);
+fpa = x(5,:)*scale(5);
+psi = x(6,:)*scale(6);
 
 [g,L,D] = entry_accels(x);
 
 % Derivs
-sdot = v.*cos(fpa); % in km
+% thetadot = v./(rp+h).*cos(fpa).*cos(psi)./cos(phi); 
+sdot = v.*cos(fpa);
+phidot = v./(rp+h).*cos(fpa).*sin(psi);
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
-fpadot = L./v.*u + (v./(rp+h) - g./v).*cos(fpa);
+fpadot = L./v.*cos(u) + (v./(rp+h) - g./v).*cos(fpa);
+psidot = -1./v./cos(fpa).*(L.*sin(u) + v.^2./(rp+h).*cos(fpa).^2.*cos(psi).*tan(phi));
+xdot = [hdot; sdot; phidot; vdot; fpadot; psidot]./scale';            % change in state
 
-xdot = [hdot/hscale; vdot/vscale; fpadot/fpascale; sdot/rangescale];            % change in state
-
-dt = ds./vdot;   % just for estimate
+dt = ds./(vdot);   % just for estimate
 y  = x + xdot.*dt;  % new state
 
 
-function c = entry_cost(x, u)
-global scale cost_scale ds 
+function c = entry_cost(x, u, lagrange, penalty)
+global scale ds
 
 cost_scale = 10000;
+% targets
+
 
 % weights
 wu = 0.0;
+wh = 0.0;
+ws = 0.0;
 
-hscale = scale(1);
-vscale = scale(2);
-fpascale = scale(3);
-rangescale = scale(4);
 % states
-h = x(1,:)*hscale;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
-s = x(4,:)*rangescale;
+% h = x(1,:)*scale(1);
+% s = x(2,:)*scale(2); 
+phi = x(3,:)*scale(3);
+v = x(4,:)*scale(4);
+fpa = x(5,:)*scale(5);
+% psi = x(6,:)*scale(6);
 
 % cost function
 % sum of 3 terms:
@@ -178,28 +192,52 @@ lx = -hdot./vdot * ds;
 
 % final cost
 if any(final)
-    llf      = zeros(size(u)); % in real coordinates
-    lf       = zeros(size(u));
-    lf(1,final)= llf(1,final);
+    lf = 0;
+%     llf      = 10000*3397*phi.^2; % in real coordinates
+%     lf       = zeros(size(u));
+%     lf(1,final)= llf(1,final);
 else
     lf    = 0;
 end
 
+% Constraint terms
+cons = entry_constraints(x,u);
+if any(final)
+    con = zeros(size(cons,1),size(u,2));
+    con(:,final) = cons(:,final);
+else
+    con = 0*lagrange;
+end
+
+%Lagrange should be a vector same length as con
+%Penalty is generally a scalar even when con is not 
+
 % total cost
-c     = (lu + lx + lf)/cost_scale;
+c     = (lu + lx + lf + sum(lagrange.*con, 1) + 0.5*penalty*sum(con.^2))/cost_scale ;
 
 
-function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP)
+function c = entry_constraints(x,u)
+global scale 
+% h = x(1,:)*scale(1);
+s = x(2,:)*scale(2); 
+phi = x(3,:)*scale(3);
+% v = x(4,:)*scale(4);
+% fpa = x(5,:)*scale(5);
+% psi = x(6,:)*scale(6);
+c = [phi*3397; s/1000-350];% final latitude = 0
+
+
+function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP,lagrange,penalty)
 % combine dynamics and cost
 % use helper function finite_difference() to compute derivatives
 
 if nargout == 2
     f = entry_dynamics(x,u);
-    c = entry_cost(x,u);
+    c = entry_cost(x,u,lagrange,penalty);
 else
     % state and control indices
-    ix = 1:4;
-    iu = 5;
+    ix = 1:6;
+    iu = 7;
     
     % dynamics first derivatives
     xu_dyn  = @(xu) entry_dynamics(xu(ix,:),xu(iu,:));
@@ -216,70 +254,32 @@ else
         if N_J <= 2
             JJ = reshape(JJ,[3 4 N_J(2)]);
         else
-            JJ = reshape(JJ, [4 5 N_J(2) N_J(3)]);
+            JJ = reshape(JJ, [ix(end) iu N_J(2) N_J(3)]);
         end
         JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
         fxx     = JJ(:,ix,ix,:);
         fxu     = JJ(:,ix,iu,:);
         fuu     = JJ(:,iu,iu,:);
-        
-    elseif 0
-        N_J = size(J);
-        dx = diff([x;u], 1, 2);
-        y = diff(J, 1, 3);
-        %         I = eye(iu(end));
-        B = zeros(N_J(1), N_J(2), N_J(2), N_J(3)); % Hessian
-        B(:,:,:,1) = JJ(:,:,:,1);
-        for i = 1:(N_J(3)-1) % timesteps
-            for j = 1:N_J(1) % each differential equation
-                z = y(j,:,i)'-squeeze(B(j,:,:,i))*dx(:,i); % compute (y-Bdx)
-                B(j,:,:,i+1) = squeeze(B(j,:,:,i)) + z*z.'/(z.'*dx(:,i));
-            end
-        end
-        E = abs(B-JJ);
-        E(isnan(E)) = 0;
-        
+                
     else
         [fxx,fxu,fuu] = deal([]);
     end
     
     % cost first derivatives
-    xu_cost = @(xu) entry_cost(xu(ix,:),xu(iu,:));
+    xu_cost = @(xu) entry_cost(xu(ix,:),xu(iu,:),lagrange,penalty);
     J       = squeeze(complex_difference(xu_cost, [x; u]));
     cx      = J(ix,:);
     cu      = J(iu,:);
-    %     cx_ = gradient(x);
     
     %     cost second derivatives
         xu_Jcst = @(xu) squeeze(complex_difference(xu_cost, xu));    
     
-    if 1
         JJ      = finite_difference(xu_Jcst, [x; u]);
         JJ      = 0.5*(JJ + permute(JJ,[2 1 3])); %symmetrize
         cxx     = JJ(ix,ix,:);
         cxu     = JJ(ix,iu,:); % all zeros for alt obj
         cuu     = JJ(iu,iu,:); % all zeros for alt obj
 
-    else   % SR1 estimate
-        cxx0     = finite_difference(xu_Jcst, [x(:,1);u(:,1)]);
-        JJ      = 0.5*(cxx0 + cxx0.'); %symmetrize
-        cxx     = JJ(ix,ix,:);
-        N = size(cx);
-        dx = diff(x, 1, 2);
-        y = diff(cx, 1, 2);
-        cxx_qn = zeros(N(1), N(1), N_J(2)); % Hessian
-        cxx_qn(:,:,1) = cxx; % initialize with true values
-    %     cxx_qn(:,:,1) = eye(N(1)); % initialize with identitity
-    
-        % how to vectorize this? cannot due to temporal structure 
-        for i = 1:(N(2)-1) % timesteps
-                z = y(:,i)-cxx_qn(:,:,i)*dx(:,i); % compute (y-Bdx)
-                cxx_qn(:,:,i+1) = squeeze(cxx_qn(:,:,i)) + z*z.'/(z.'*dx(:,i));
-        end
-        cxx = cxx_qn;
-        cxu = zeros(N(1), 1, N(2));
-        cuu = zeros(1, 1, N(2));
-    end
     
     
     [f,c] = deal([]);

@@ -1,5 +1,6 @@
-function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
-% iLQG - solve the deterministic finite-horizon optimal control problem.
+function [x, u, L, Vx, Vxx, cost, trace, stop] = LMDDP(DYNCST, x0, u0, Op)
+% LMDDP - solve the deterministic finite-horizon optimal control problem
+% using a limited memory version of DDP 
 %
 %        minimize sum_i CST(x(:,i),u(:,i)) + CST(x(:,end))
 %            u
@@ -82,11 +83,11 @@ function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
 %---------------------- user-adjustable parameters ------------------------
 defaults = {'lims',           [],...            control limits
             'parallel',       true,...          use parallel line-search?
-            'Alpha',          10.^linspace(0.75,-3,11),... backtracking coefficients
+            'Alpha',          10.^linspace(0,-3,15),... backtracking coefficients
             'tolFun',         1e-7,...          reduction exit criterion
             'tolGrad',        1e-4,...          gradient exit criterion
             'maxIter',        500,...           maximum iterations            
-            'lambda',         10.0,...             initial value for lambda
+            'lambda',         1,...             initial value for lambda
             'dlambda',        1,...             initial value for dlambda
             'lambdaFactor',   1.6,...           lambda scaling factor
             'lambdaMax',      1e10,...          lambda maximum value
@@ -149,6 +150,9 @@ if size(x0,2) == 1
     for alpha = 1:Op.Alpha 
         [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
         % simplistic divergence test
+        cost_init(end+1) = sum(cost);
+        u_init{end+1} = un;
+        x_init{end+1} = x;
 
         if all(abs(x(:)) < 1e8)
             u = un;
@@ -218,7 +222,7 @@ for iter = 1:Op.maxIter
     while ~backPassDone
         
         t_back   = tic;
-        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.regType,Op.lims,u);
+        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,lambda,Op.regType,Op.lims,u);
         trace(iter).time_backward = toc(t_back);
         
         if diverge
@@ -468,7 +472,7 @@ end
 function [h,v,fpa,s] = get_states(x)
 global scale n_samples v0
 iv = 1;
-ih = iv + (1:n_samples);
+ih = iv + 1:n_samples;
 ig = n_samples + ih;
 is = n_samples + ig;
 
@@ -537,11 +541,6 @@ for i = N-1:-1:1
     if ~isempty(fuu)
         QuuF = QuuF + fuuVx;
     end
-    
-    % Optional, try the saddle free thing and form abs value of Quuf
-%     eigvals
-%     [v,e] = eig(QuuF);
-%     QuuF = v*abs(e)*v';
     
     if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
         % no control limits: Cholesky decomposition, check for non-PD
@@ -670,13 +669,6 @@ if figures ~= 0  && ( mod(mT,figures) == 0 || init == 2 )
     
     set(findobj(fig1,'-property','FontSize'),'FontSize',8)
     stop = get(fig1,'user');
-    
-%     if T==1
-%         gif('DDP_Solution.gif','frame',fig1)
-% 
-%     else
-%         gif('frame',fig1,'DelayTime', 0.6)
-%     end
 end
 
 if figures < 0  &&  (mod(abs(trace(mT).iter)-1,figures) == 0 || init == 2) && ~isempty(Vx)

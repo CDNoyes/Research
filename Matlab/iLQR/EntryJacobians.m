@@ -23,7 +23,7 @@ end
 function y = entry_dynamics(x,u,dv,discrete)
 
 % === states and controls:
-% x = [h dv gamma]'
+% x = [v h gamma s]'
 % u = [u]'     = [cos(bank)]
 
 % constants
@@ -38,7 +38,7 @@ fpa = x(3,:);
 [g,L,D] = entry_accels(x);
 
 % Derivs
-sdot = v.*cos(fpa)/1000; 
+sdot = v.*cos(fpa); 
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
 fpadot = L./v.*u + (v./(rp+h) - g./v).*cos(fpa);
@@ -47,17 +47,17 @@ xdot = [vdot; hdot; fpadot; sdot];            % change in state
 
 dt = dv./(vdot);   % just for estimate
 if discrete
-    y  = x + xdot.*dt;  % new state
+    y  = x + xdot.*dt;  % new state for discrete time
 else
-    y = xdot;
+    y = xdot;           % state derivatives for continuous
 end
 
 function [g,L,D] = entry_accels(x)
 % constants
-cd  = 1.46;
-cl  = 0.35;
+cd  = 1.408;
+cl  = 0.357;
 rp = 3396.2e3;
-m = 7200;
+m = 5000;
 S = 15.8;
 mu = 4.2830e13;
 

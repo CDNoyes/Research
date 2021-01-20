@@ -1,160 +1,140 @@
-function sol=entry_vel(inp)
-% A demo of iLQG/DDP with car-parking dynamics
+function srp
 
+clc;
+close all
 
 fprintf(['\nA demonstration of the iLQG algorithm '...
-    'with entry dynamics, velocity loss as independent variable.\n'...
+    'with SRP dynamics, time as independent variable.\n'...
     'for details see\nTassa, Mansard & Todorov, ICRA 2014\n'...
     '\"Control-Limited Differential Dynamic Programming\"\n'])
 
 % Set full_DDP=true to compute 2nd order derivatives of the
 % dynamics. This will make iterations more expensive, but
 % final convergence will be much faster (quadratic)
-if nargin == 0
-    inp = DDPInput([0,0,0]);
-    
-end
-global scale ds
-full_DDP = 1;
 
-hscale = 120e3;
-vscale = 5500;
-fpascale = 0.2;
-v0 = inp.v0;
-rangescale = 500e3;
-scale = [hscale, vscale, fpascale, rangescale];
+full_DDP = 1;
+dist_scale = 3000;
+vel_scale = 200;
+mass_scale = 7000;
+
+global scale thrust_scale dt
+scale = [dist_scale, dist_scale, vel_scale, vel_scale, mass_scale]';
+thrust_scale = mass_scale*15;
 
 % set up the optimization problem
 DYNCST  = @(x,u,i) entry_dyn_cst(x,u,full_DDP);
-V       = inp.vf; % terminal velocity, m/s
-dV      = V-v0;
-T       = inp.horizon;              % horizon
-ds      = dV/T;
+tf      = 30;
+T       = 100;              % horizon
+dt      = tf/T;
 
-x0      = [39.4497e3, v0, (-10.604*pi/180), 0]'./scale';   % initial state
-% u0      = ones(1,floor(T));    % initial controls
-% u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
-u0 = linspace(0, 1, T);
+x0      = [3000/dist_scale, 3000/dist_scale, -400/vel_scale, -100/vel_scale, 7200/mass_scale]';   % initial state, [DR, Alt, Xdot, Zdot, mass]
+u0 = ones(2, T)*7*7200;
 
-Op.lims  = inp.bounds;         % cosbank angle limits
-Op.plot = inp.running_plots;               % plot the derivatives as well
+Op.lims  = [0 15*7200; 0 15*7200]/thrust_scale;         % wheel angle limits (radians)
+Op.plot = 1;               % plot the derivatives as well
 Op.maxIter = 50;
-Op.parallel = 1;
+Op.parallel = 0;
 
 
 % === run the optimization!
-
 [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
-    
-[g,L,D] = entry_accels(x);
 
-h = x(1,:)*hscale/1000;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
-s = x(4,:)*rangescale/1000;
+h = x(1,:)*dist_scale/1000;
+s = x(2,:)*dist_scale/1000;
+
+vx = x(3,:)*vel_scale;
+vz = x(4,:)*vel_scale;
+m = x(5,:)*mass_scale;
 
 disp(['hf = ',num2str(h(end)),' km'])
-disp(['Vf = ',num2str(v(end)),' m/s'])
 disp(['sf = ',num2str(s(end)),' km'])
+disp(['Vx = ',num2str(vx(end)),' m/s'])
+disp(['Vz = ',num2str(vz(end)),' m/s'])
 
 
-sol.u = u;
-sol.v = v;
-sol.mean = [h*1000; fpa; s];
-sol.h = h*1000;
-sol.fpa = fpa;
-sol.s = s;
-sol.weights = [0,0,0];
-sol.cost = sum(cost);
-sol.X0 = [h(1),fpa(1),s(1)];
-sol.input = inp;
-sol.sigma_weights = 1;
-sol.L = L;
-sol.D = D;
-
-if inp.terminal_plots
 figure
 plot(s, h)
-xlabel('Downrange km')
+xlabel('Downrange to go km')
 ylabel('Altitude km')
 grid on
 
 figure
-plot(v, h)
-xlabel('Velocity m/s')
-ylabel('Altitude km')
+plot(vx, vz)
+% xlabel('Velocity m/s')
+% ylabel('Altitude km')
 grid on
-end
 
-function [g,L,D] = entry_accels(x)
-global scale
-% constants
-[m,S,cl,cd] = aero_coeff();
 
-rp = 3396.2e3;
-mu = 4.2830e13;
-
-% states
-h = x(1,:)*scale(1);
-v = x(2,:)*scale(2);
-
-% Accels
-rho = 0.0158*exp(-h/9354.5);
-f = 0.5*rho.*v.^2 * S/m;
-D = f*cd;
-L = f*cl;
-g = mu./(rp+h).^2;
-
-function y = entry_dynamics(x,u)
-global scale ds
+function y = entry_dynamics(xs, u)
+global scale thrust_scale dt
 
 % === states and controls:
-% x = [h dv gamma]'
-% u = [u]'     = [cos(bank)]
-hscale = scale(1);
-vscale = scale(2);
-fpascale = scale(3);
-rangescale = scale(4);
+% x = [h s vx vz]'
+% u = [T]'     = Thrust vector
 
 % constants
-rp = 3396.2e3;
+% rp = 3396.2e3;
 
 % states
-h = x(1,:)*hscale;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
+T = u*thrust_scale;
 
-[g,L,D] = entry_accels(x);
+if size(xs,2) == 1
+    S = scale;
+else
+   S = repmat(scale, 1, size(xs, 2)); 
+end
+x = xs.*S; % need to fix for vectorization
+s = x(1,:);
+h = x(2,:);
+vx = x(3,:);
+vz = x(4,:);
+m = x(5,:);
+
+
+g = 3.71;
+ve = 295*9.81;
 
 % Derivs
-sdot = v.*cos(fpa); % in km
-hdot = v.*sin(fpa);
-vdot = -D-g.*sin(fpa);
-fpadot = L./v.*u + (v./(rp+h) - g./v).*cos(fpa);
+sdot = vx;
+hdot = vz;
+vxdot = T(1,:)./m;
+vzdot = T(2,:)./m - g;
+mdot = -sqrt(sum(T.^2, 1))/ve;
 
-xdot = [hdot/hscale; vdot/vscale; fpadot/fpascale; sdot/rangescale];            % change in state
-
-dt = ds./vdot;   % just for estimate
-y  = x + xdot.*dt;  % new state
+xdot = [sdot; hdot; vxdot; vzdot; mdot]./S;            % change in state
+y  = xs + xdot.*dt;  % new state
 
 
-function c = entry_cost(x, u)
-global scale cost_scale ds 
+function c = entry_cost(xs, u)
+global scale dt thrust_scale
 
 cost_scale = 10000;
-
 % weights
-wu = 0.0;
 
-hscale = scale(1);
-vscale = scale(2);
-fpascale = scale(3);
-rangescale = scale(4);
+
 % states
-h = x(1,:)*hscale;
-v = x(2,:)*vscale;
-fpa = x(3,:)*fpascale;
-s = x(4,:)*rangescale;
+if size(xs,2) == 1
+    S = scale;
+else
+   S = repmat(scale, 1, size(xs, 2)); 
+end
+T = u*thrust_scale;
+x = xs.*S; % need to fix for vectorization
+s = x(1,:);
+h = x(2,:);
+vx = x(3,:);
+vz = x(4,:);
+m = x(5,:);
+
+g = 3.71;
+ve = 295*9.81;
+
+% Derivs
+sdot = vx;
+hdot = vz;
+vxdot = T(1,:)./m;
+vzdot = T(2,:)./m - g;
+% mdot = -sqrt(sum(T.^2, 1))/ve;
 
 % cost function
 % sum of 3 terms:
@@ -166,20 +146,19 @@ final = isnan(u(1,:));
 u(:,final)  = 0;
 
 % control cost
-lu    = wu*u.^2;
+lu    = 0; %wu*u.^2;
 
 % running cost
-[g,~,D] = entry_accels(x);
 
-hdot = v.*sin(fpa);
-vdot = -D - g.*sin(fpa);
-lx = -hdot./vdot * ds;
+% lx = 0.1*sqrt(sum(T/1000.^2, 1)) * dt;
+lx = sum(T/100.^2, 1) * dt;
+lx = lx + 1e-5 * 2*(s.*sdot + h.*hdot + vz.*vzdot + vx.*vxdot)*dt;
 
 
 % final cost
 if any(final)
-    llf      = zeros(size(u)); % in real coordinates
-    lf       = zeros(size(u));
+    llf      = 0*(0*s.^2 + h.^2) + 1*(vz.^2 + vx.^2); % in real coordinates
+    lf       = zeros(1,size(u,2));
     lf(1,final)= llf(1,final);
 else
     lf    = 0;
@@ -198,8 +177,8 @@ if nargout == 2
     c = entry_cost(x,u);
 else
     % state and control indices
-    ix = 1:4;
-    iu = 5;
+    ix = 1:5;
+    iu = 6:7;
     
     % dynamics first derivatives
     xu_dyn  = @(xu) entry_dynamics(xu(ix,:),xu(iu,:));
@@ -214,9 +193,9 @@ else
         JJ      = finite_difference(xu_Jcst, [x; u]);
         %         JJ      = reshape(JJ, [4 6 size(J)]); % Original code
         if N_J <= 2
-            JJ = reshape(JJ,[3 4 N_J(2)]);
+            JJ = reshape(JJ,[ix(end) iu(end) N_J(2)]);
         else
-            JJ = reshape(JJ, [4 5 N_J(2) N_J(3)]);
+            JJ = reshape(JJ, [ix(end) iu(end) N_J(2) N_J(3)]);
         end
         JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
         fxx     = JJ(:,ix,ix,:);

@@ -17,7 +17,7 @@ global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu n_par
 % w_ are the cost weights
 
 n_states = 3;
-n_controls = 4; % open loop + 3 feedback terms
+n_controls = 1; % open loop + 3 feedback terms
 n_params = 3;
 
 if nargin == 0
@@ -25,7 +25,8 @@ if nargin == 0
     ws = 3;
     wu = 0.3;
     input = DDPInput([wh,ws,wu]);
-    input.ddp = 1;
+    input.ut_scale = 20-n_states-n_params;
+    input.horizon = 250;
 end
 W = input.weights;
 wh = W(1);
@@ -40,7 +41,7 @@ fpascale = 0.2;
 rangescale = 500e3;
 scale = [hscale, vscale, fpascale, rangescale];
 
-v0 = 5461.4;
+v0 = input.v0;
 
 % set up the optimization problem
 DYNCST  = @(x,u,i) entry_dyn_cst(x, u, full_DDP);
@@ -52,18 +53,21 @@ ds      = dV/T;
 % Initial States
 x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
 
-if 0 %State + Param Uncertainty
+if 1 %State + Param Uncertainty
     % Note that horizon must be set lower because of the increased state
     % dimension
-    [X0, weights] = UnscentedTransform(x0(2:end), 1*diag([2500/hscale, 0.25*pi/180/fpascale, 5000/rangescale, 1/30, 1/30]).^2, input.ut_scale);
+    [X0, weights] = UnscentedTransform(x0(2:end), 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2, input.ut_scale);
     n_samples = length(weights);
     X0 = [zeros(n_samples,1), X0'];
     X0_vector = X0(n_samples:end)';
     
 else
     % Param Unc only, deterministic initial state 
-    per = 20;
-    P0 = 1*diag(per/100/3*ones(n_params,1)).^2;
+%     per = 20;
+%     P0 = 1*diag(per/100/3*ones(n_params,1)).^2;
+
+    per = [10,10,30];
+    P0 = 1*diag(per/100/3).^2;
     [p0, weights] = UnscentedTransform(ones(n_params,1), P0, input.ut_scale);
     n_samples = length(weights);
     X0 = [repmat(x0(1:4),1,n_samples);p0]';
@@ -184,18 +188,16 @@ grid on
 
 function [h,v,fpa,s,g,L,D] = entry_accels(x)
 % constants
-cd  = 1.408;
-cl  = 0.357;
+[m,S,cl,cd] = aero_const();
+
 rp = 3396.2e3;
-m = 5000;
-S = 15.8;
 mu = 4.2830e13;
 
 % states
 [h,v,fpa,s, fcl, fcd, frho] = get_states(x);
 
 % Accels
-rho = frho.*0.0158.*exp(-h/9354.5);
+rho = frho.*0.0158.*exp(-h./9354.5);
 f = 0.5*rho.*v.^2*S/m;
 D = f.*cd.*fcd;
 L = f.*cl.*fcl;
@@ -204,7 +206,7 @@ g = mu./(rp+h).^2;
 function x = entry_dynamics(x, U)
 % Calls the discrete time Euler approx multiple times for better accuracy
 global ds
-n_int_steps = 1;
+n_int_steps = 4;
 dsn = ds/n_int_steps;
 
 k = size(U,2)/size(x,2);
@@ -215,9 +217,10 @@ x = repmat(x,1,k);
 % end
 
 for i = 1:n_int_steps
-    % Single Heun Step (two stage method) of length dsn
     dx = entry_step(x, U);
     % x1 = x + dsn*dx;
+    % Single Heun Step (two stage method) of length dsn
+
 %     x = x + 0.5*dsn*(dx + entry_step(x + dsn*dx, U, 0));
     x = x + dsn*dx;
 end
@@ -245,7 +248,8 @@ eD = get_error(D);
 if size(U,1)>1
     du = U(2,:).*eD + U(3,:).*es + U(4,:).*ef*200;
 else
-    du = 0.2559*eD + -0.113*es + -0.5*ef*200;
+    du = 0.0725*eD + -0.025*es + -4*ef; % [0.0725, -0.025, -4]
+%     du = 0; % open loop
 end
 u_cl = smooth_sat(U(1,:) + du); % cosh
 
@@ -306,7 +310,7 @@ vh_dot = -2*get_stats(h.*hdot./vdot) + 2*hmean.*get_stats(hdot./vdot);
 vs_dot = 0.5*vs_dot./((svar + 0.0001).^0.5);
 vh_dot = 0.5*vh_dot./((hvar + 0.0001).^0.5);
 
-lx = hprime + ws*vs_dot*ds/12 + wh*vh_dot*ds;
+lx = hprime + ws*vs_dot*ds + wh*vh_dot*ds;
 
 % control cost
 lu    = wu*(u(1,:)-0.5).^2 * ds.* v/2500; % this term is for smoothness
@@ -434,8 +438,8 @@ function c = pp(a,b)
 c = bsxfun(@plus,a,b);
 
 
-function [h,v,fpa,s, fcl, fcd,frho] = get_states(x)
-global scale n_samples v0
+function [h,v,fpa,s, fcl, fcd,frho,fhs] = get_states(x)
+global scale n_samples v0 n_params
 
 iv = 1;
 ih = iv + 1:n_samples+1;
@@ -452,7 +456,11 @@ if nargout > 4
     irho = n_samples + icd;
     fcl = x(icl,:);
     fcd = x(icd,:);
-    frho = x(irho,:);
+    if n_params == 2
+        frho = 1;
+    else
+        frho = x(irho,:);
+    end
 end
 
 

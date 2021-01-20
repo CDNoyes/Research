@@ -1,5 +1,5 @@
-function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
-% iLQG - solve the deterministic finite-horizon optimal control problem.
+function [x, u, L, Vx, Vxx, cost, trace, stop] = QNDDP(DYNCST, x0, u0, Op)
+% QNDDP - solve the deterministic finite-horizon optimal control problem.
 %
 %        minimize sum_i CST(x(:,i),u(:,i)) + CST(x(:,end))
 %            u
@@ -82,11 +82,11 @@ function [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op)
 %---------------------- user-adjustable parameters ------------------------
 defaults = {'lims',           [],...            control limits
             'parallel',       true,...          use parallel line-search?
-            'Alpha',          10.^linspace(0.75,-3,11),... backtracking coefficients
+            'Alpha',          10.^linspace(0,-3,15),... backtracking coefficients
             'tolFun',         1e-7,...          reduction exit criterion
             'tolGrad',        1e-4,...          gradient exit criterion
             'maxIter',        500,...           maximum iterations            
-            'lambda',         10.0,...             initial value for lambda
+            'lambda',         1,...             initial value for lambda
             'dlambda',        1,...             initial value for dlambda
             'lambdaFactor',   1.6,...           lambda scaling factor
             'lambdaMax',      1e10,...          lambda maximum value
@@ -142,14 +142,10 @@ trace(1).dlambda = dlambda;
 if size(x0,2) == 1
     diverge = true;
     u(:,end) = nan*u(:,end);
-    cost_init = [];
-    u_init = {};
-        x_init = {};
 
-    for alpha = 1:Op.Alpha 
-        [x,un,cost]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
+    for alpha = 1 %Op.Alpha 
+        [x,un,cost,~]  = forward_pass(x0(:,1),alpha*u,[],[],[],1,DYNCST,Op.lims,[]);
         % simplistic divergence test
-
         if all(abs(x(:)) < 1e8)
             u = un;
             diverge = false;
@@ -186,6 +182,9 @@ if diverge
     return
 end
 
+% Storage for QN approximation
+[storage.dx, storage.gradient, storage.hessian] = deal([]);
+
 % constants, timers, counters
 flgChange   = 1;
 stop        = 0;
@@ -208,7 +207,10 @@ for iter = 1:Op.maxIter
     %====== STEP 1: differentiate dynamics and cost along new trajectory
     if flgChange
         t_diff = tic;
-        [~,~,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu]   = DYNCST(x, [u nan(m,1)], 1:N+1);
+        [~,~,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu]   = DYNCST(x, [u nan(m,1)], iter);
+%         if iter > 1
+%             cuu = [];
+%         end
         trace(iter).time_derivs = toc(t_diff);
         flgChange   = 0;
     end
@@ -216,10 +218,12 @@ for iter = 1:Op.maxIter
     %====== STEP 2: backward pass, compute optimal control law and cost-to-go
     backPassDone   = 0;
     while ~backPassDone
-        
         t_back   = tic;
-        [diverge, Vx, Vxx, l, L, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.regType,Op.lims,u);
+
+        [diverge, Vx, Vxx, l, L, dV, storage_temp] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,Op.regType,Op.lims,u,storage);    
+
         trace(iter).time_backward = toc(t_back);
+        
         
         if diverge
             if verbosity > 2
@@ -233,6 +237,7 @@ for iter = 1:Op.maxIter
             continue
         end
         backPassDone      = 1;
+        storage = storage_temp; % dont update the data until the backpass is accepted 
     end
 
     % check for termination due to small gradient
@@ -252,7 +257,7 @@ for iter = 1:Op.maxIter
     if backPassDone
         t_fwd = tic;
         if Op.parallel  % parallel line-search
-            [xnew,unew,costnew] = forward_pass(x0 ,u, L, x(:,1:N), l, Op.Alpha, DYNCST,Op.lims,Op.diffFn);
+            [xnew,unew,costnew,dx,du] = forward_pass(x0 ,u, L, x(:,1:N), l, Op.Alpha, DYNCST,Op.lims,Op.diffFn);
             Dcost               = sum(cost(:)) - sum(costnew,2);
             [dcost, w]          = max(Dcost);
             alpha               = Op.Alpha(w);
@@ -269,10 +274,12 @@ for iter = 1:Op.maxIter
                 costnew     = costnew(:,:,w);
                 xnew        = xnew(:,:,w);
                 unew        = unew(:,:,w);
+                dx          = dx(:,:,w);
+                du          = du(:,:,w);
             end
         else            % serial backtracking line-search
             for alpha = Op.Alpha
-                [xnew,unew,costnew]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,DYNCST,Op.lims,Op.diffFn);
+                [xnew,unew,costnew,dx,du]   = forward_pass(x0 ,u+l*alpha, L, x(:,1:N),[],1,DYNCST,Op.lims,Op.diffFn);
                 dcost    = sum(cost(:)) - sum(costnew(:));
                 expected = -alpha*(dV(1) + alpha*dV(2));
                 if expected > 0
@@ -283,7 +290,8 @@ for iter = 1:Op.maxIter
                 end
                 if (z > Op.zMin)
                     fwdPassDone = 1;
-%                     disp(["Stepsize = ",num2str(alpha)])
+                    storage.dx = [dx;du];
+                    storage.x = [xnew(:,1:end-1);unew];
                     break;
                 end
             end
@@ -358,7 +366,7 @@ for iter = 1:Op.maxIter
     trace(iter).improvement = dcost;
     trace(iter).cost        = sum(cost(:));
     trace(iter).reduc_ratio = z;
-    stop = graphics(Op.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace(1:iter),0);
+    stop = graphics(Op.plot,x,u,cost,L,Vx,Vxx,fx,[],fu,[],trace(1:iter),0);
 end
 
 % save lambda/dlambda
@@ -404,13 +412,13 @@ if ~isempty(iter)
     end
     trace    = trace(~isnan([trace.iter]));
 %     timing   = [diff_t back_t fwd_t total_t-diff_t-back_t-fwd_t];
-    graphics(Op.plot,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,2); % draw legend
+    graphics(Op.plot,x,u,cost,L,Vx,Vxx,fx,[],fu,[],trace,2); % draw legend
 else
     error('Failure: no iterations completed, something is wrong.')
 end
 
 
-function [xnew,unew,cnew] = forward_pass(x0,u,L,x,du,Alpha,DYNCST,lims,diff)
+function [xnew,unew,cnew,dx,du] = forward_pass(x0,u,L,x,du,Alpha,DYNCST,lims,diff)
 % parallel forward-pass (rollout)
 % internally time is on the 3rd dimension, 
 % to facillitate vectorized dynamics calls
@@ -452,96 +460,119 @@ end
 xnew = permute(xnew, [1 3 2]);
 unew = permute(unew, [1 3 2]);
 cnew = permute(cnew, [1 3 2]);
-if 0 %isempty(L)
-   [h,v,fpa,s] = get_states(xnew);
-   figure
-   plot(v(1:end-1), unew')
-   figure
-   plot(v, h'/1000, 'b') 
-    grid on
-    
-      figure
-   plot(v, s'/1000, 'b') 
-    grid on
+if isempty(L)
+    dx = [];
+    du = [];
+else
+    dx   = xnew(:,1:N)-x;
+    du   = unew-u;
 end
 
-function [h,v,fpa,s] = get_states(x)
-global scale n_samples v0
-iv = 1;
-ih = iv + (1:n_samples);
-ig = n_samples + ih;
-is = n_samples + ig;
 
-h = x(ih,:)*scale(1); % m
-v = v0 - x(iv,:)*scale(2); % m/s
-fpa = x(ig,:)*scale(3);
-s = x(is,:)*scale(4); % m
-
-
-function [diverge, Vx, Vxx, k, K, dV] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u)
+function [diverge, Vx, Vxx, k, K, dV, storage] = back_pass(cx,cu,cxx,cxu,cuu,fx,fu,fxx,fxu,fuu,lambda,regType,lims,u,storage)
 % Perform the Ricatti-Mayne backward pass
 
-% tensor multiplication for DDP terms
+% First iteration, cxx, cxu, and cuu will be given, after they will be
+% empty. Same with dynamics hessians
+old = storage;
+QN = ~isempty(storage.gradient);
+
 vectens = @(a,b) permute(sum(bsxfun(@times,a,b),1), [3 2 1]);
+
 
 N  = size(cx,2);
 n  = numel(cx)/N;
 m  = numel(cu)/N;
 
+ix = 1:n;
+iu = n + (1:m);
+
 cx    = reshape(cx,  [n N]);
 cu    = reshape(cu,  [m N]);
-cxx   = reshape(cxx, [n n N]);
-cxu   = reshape(cxu, [n m N]);
-cuu   = reshape(cuu, [m m N]);
+
 
 k     = zeros(m,N-1);
 K     = zeros(m,n,N-1);
 Vx    = zeros(n,N);
 Vxx   = zeros(n,n,N);
 dV    = [0 0];
-
 Vx(:,N)     = cx(:,N);
+
+if ~QN
+cxx   = reshape(cxx, [n n N]);
+cxu   = reshape(cxu, [n m N]);
+cuu   = reshape(cuu, [m m N]);
 Vxx(:,:,N)  = cxx(:,:,N);
+end
 
 diverge  = 0;
 for i = N-1:-1:1
     
     Qu  = cu(:,i)      + fu(:,:,i)'*Vx(:,i+1);
     Qx  = cx(:,i)      + fx(:,:,i)'*Vx(:,i+1);
-    Qux = cxu(:,:,i)'  + fu(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
-    if ~isempty(fxu)
-        fxuVx = vectens(Vx(:,i+1),fxu(:,:,:,i));
-        Qux   = Qux + fxuVx;
+    if QN
+        if 1 % QN approximations using previous iterate and current 
+            dx = storage.dx(:,i);
+            y = [Qx;Qu] - storage.gradient(:,i);
+            H = y - storage.hessian(:,:,i)*dx;
+        else % QN approximations using temporal evolution of states 
+            if i > 1
+            	 dx = storage.x(:,i)-storage.x(:,i-1);
+                 Vx_next = storage.value_gradient(:,i-1);
+                 y = [Qx;Qu] - [cu(:,i-1) + fu(:,:,i-1)'*Vx_next; cx(:,i-1) + fx(:,:,i-1)'*Vx_next];
+                 H = y - storage.hessian(:,:,i)*dx;
+            else
+                 dx = 0*storage.x(:,i);
+                 H = dx;
+            end
+            
+        end
+        den = (H.'*dx);
+        if abs(den) > 0.01*norm(dx)*norm(H)
+            Q = storage.hessian(:,:,i) + H*H.'/den;
+            
+        else % Don't update if the denominator is too small,  i.e. no real step was taken 
+%             disp('Skipped update')
+            Q = storage.hessian(:,:,i);
+        end
+        Qxx = Q(ix,ix);
+        Quu = Q(iu,iu);
+        Qux = Q(iu,ix);
+        storage.hessian(:,:,i) = Q;
+        
+        Qux_reg = Qux;
+
+        QuuF = Quu + lambda*eye(m)*(regType == 1);
+        
+    else
+        Qux = cxu(:,:,i)'  + fu(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+        Quu = cuu(:,:,i)   + fu(:,:,i)'*Vxx(:,:,i+1)*fu(:,:,i);
+        Qxx = cxx(:,:,i)   + fx(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
+
+        if ~isempty(fxu)
+            fxuVx = vectens(Vx(:,i+1),fxu(:,:,:,i));
+            Qux   = Qux + fxuVx;
+        end
+        if ~isempty(fuu)
+            fuuVx = vectens(Vx(:,i+1),fuu(:,:,:,i));
+            Quu   = Quu + fuuVx;
+        end
+        if ~isempty(fxx)
+            Qxx = Qxx + vectens(Vx(:,i+1),fxx(:,:,:,i));
+        end
+
+        Vxx_reg = (Vxx(:,:,i+1) + lambda*eye(n)*(regType == 2));
+
+        Qux_reg = cxu(:,:,i)'   + fu(:,:,i)'*Vxx_reg*fx(:,:,i);
+        if ~isempty(fxu)
+            Qux_reg = Qux_reg + fxuVx;
+        end
+
+        QuuF = cuu(:,:,i)  + fu(:,:,i)'*Vxx_reg*fu(:,:,i) + lambda*eye(m)*(regType == 1);
+    
+        storage.hessian(:,:,i) = [Qxx, Qux.';Qux, Quu];
     end
-    
-    Quu = cuu(:,:,i)   + fu(:,:,i)'*Vxx(:,:,i+1)*fu(:,:,i);
-    if ~isempty(fuu)
-        fuuVx = vectens(Vx(:,i+1),fuu(:,:,:,i));
-        Quu   = Quu + fuuVx;
-    end
-    
-    Qxx = cxx(:,:,i)   + fx(:,:,i)'*Vxx(:,:,i+1)*fx(:,:,i);
-    if ~isempty(fxx)
-        Qxx = Qxx + vectens(Vx(:,i+1),fxx(:,:,:,i));
-    end
-    
-    Vxx_reg = (Vxx(:,:,i+1) + lambda*eye(n)*(regType == 2));
-    
-    Qux_reg = cxu(:,:,i)'   + fu(:,:,i)'*Vxx_reg*fx(:,:,i);
-    if ~isempty(fxu)
-        Qux_reg = Qux_reg + fxuVx;
-    end
-    
-    QuuF = cuu(:,:,i)  + fu(:,:,i)'*Vxx_reg*fu(:,:,i) + lambda*eye(m)*(regType == 1);
-    
-    if ~isempty(fuu)
-        QuuF = QuuF + fuuVx;
-    end
-    
-    % Optional, try the saddle free thing and form abs value of Quuf
-%     eigvals
-%     [v,e] = eig(QuuF);
-%     QuuF = v*abs(e)*v';
+    storage.gradient(:,i) = [Qx;Qu]; % Only update the gradients after we've used them 
     
     if nargin < 13 || isempty(lims) || lims(1,1) > lims(1,2)
         % no control limits: Cholesky decomposition, check for non-PD
@@ -583,11 +614,11 @@ for i = N-1:-1:1
     k(:,i)      = k_i;
     K(:,:,i)    = K_i;
 end
+storage.value_gradient = Vx;
 
 
 
 function  stop = graphics(figures,x,u,cost,L,Vx,Vxx,fx,fxx,fu,fuu,trace,init)
-global n_samples
 stop = 0;
 
 if figures == 0
@@ -670,13 +701,6 @@ if figures ~= 0  && ( mod(mT,figures) == 0 || init == 2 )
     
     set(findobj(fig1,'-property','FontSize'),'FontSize',8)
     stop = get(fig1,'user');
-    
-%     if T==1
-%         gif('DDP_Solution.gif','frame',fig1)
-% 
-%     else
-%         gif('frame',fig1,'DelayTime', 0.6)
-%     end
 end
 
 if figures < 0  &&  (mod(abs(trace(mT).iter)-1,figures) == 0 || init == 2) && ~isempty(Vx)
