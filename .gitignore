@@ -1,17 +1,9 @@
-<<<<<<< HEAD
-Python/*.pyc
-Matlab/*.asv
-Matlab/misc
-Matlab/Images
-Matlab/*.txt
-Python/builds
-=======
 *.pyc
 *.asv
 Matlab/misc
 Matlab/Images
 Matlab/*.txt
+Matlab/*.mat
 Python/builds
 Python/results
 Python/data
->>>>>>> 6723d37456cf4068d36756c7915379a7fce54c36
