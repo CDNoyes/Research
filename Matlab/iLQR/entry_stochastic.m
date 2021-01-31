@@ -12,7 +12,7 @@ global ds v0 full_DDP n_samples n_states scale weights closed wh ws wu gains QN
 
 n_states = 3;
 if nargin == 0
-    input = DDPInput([3, 3, 0.2]);
+    input = DDPInput([3, 1, 0.2]);
     input.ut_scale = 17; % pretty good for a lot
 %     input.ut_scale = 6;
 %     input.gains = [0,0,0];

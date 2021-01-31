@@ -17,12 +17,12 @@ global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu n_par
 % w_ are the cost weights
 
 n_states = 3;
-n_controls = 1; % open loop + 3 feedback terms
+n_controls = 4; % open loop + 3 feedback terms
 n_params = 3;
 
 if nargin == 0
     wh = 3;
-    ws = 3;
+    ws = 0.75;
     wu = 0.3;
     input = DDPInput([wh,ws,wu]);
     input.ut_scale = 20-n_states-n_params;
@@ -77,30 +77,46 @@ end
 fprintf(['Samples = ',num2str(n_samples),'\nTotal State Dimension = ',num2str(length(X0_vector)),'\n'])
 
 % Initial Control
+if isempty(input.guess)
 % u0      = ones(1,floor(T))*0.4;
 % u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
 % u0 = [linspace(0.35, 1, T-floor(T/4)), ones(1,floor(T/4))];
-u0 = linspace(0.35, 1, T);
+    u0 = linspace(0.35, 1, T);
+else
+    u0 = input.guess(1,:);
+    disp('Loaded reference control from guess')
+end
 
 % Tuned for decent performance in the guess trajectory
 kd = input.gains(1); %more lift up when too much drag
 ks = input.gains(2);  % less lift up when too close
 kf_scale = 200; % dont touch this
 kf = input.gains(3)/kf_scale;% less lift up when too shallow
-L = ones(T,1);
-% L = linspace(1, 2, T)';
+if ~isempty(input.guess)
+    if size(input.guess,1) == 2
+        L = input.guess(2,:)';
+        disp('Loaded overcontrol from guess')
+    end
+else
+    L = ones(T,1);
+end
 K0 = [L*kd, L*ks, L*kf]';
+
+% L = linspace(1, 2, T)';
 % K0 = 0*K0;
 
 % Op.lims  = [bounds; [0,1]; [-1,0];[-200, 0]/kf_scale]; % final gain is scaled in dynamics
 if n_controls == 4 %input.optimize_gains
-    Op.lims  = [input.bounds; [-1,1]; [-1,1];[-200, 100]/kf_scale]; % allow 'bad' sign gains
+    Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % allow 'bad' sign gains
     U0 = [u0;K0];
+elseif n_controls == 2
+    Op.lims = [input.bounds; [0,10]]; % Time varying over control gain 
+    U0 = [u0;L'];
 else
     Op.lims  = input.bounds; 
     U0 = u0;
 end
-Op.plot = 1;               % plot the derivatives as well
+Op.plot = input.running_plots;               % plot the derivatives as well
 Op.maxIter = 200;
 Op.parallel = 1;
 
@@ -108,6 +124,9 @@ Op.parallel = 1;
 % === run the optimization!
 [x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, U0, Op);
 
+if n_controls == 4
+    u(4,:) = u(4,:)*kf_scale;
+end
 
 % Compute stats and setup the output structure
 [h,v,fpa,s,~,L,D] = entry_accels(x);
@@ -245,10 +264,13 @@ rp = 3396.2e3;
 ef = get_error(fpa);
 es = get_error(s/1000);
 eD = get_error(D);
-if size(U,1)>1
+if size(U,1)>2
     du = U(2,:).*eD + U(3,:).*es + U(4,:).*ef*200;
 else
     du = 0.0725*eD + -0.025*es + -4*ef; % [0.0725, -0.025, -4]
+    if size(U,1)>1
+        du = du.*U(2,:); % apply the overcontrol gain 
+    end
 %     du = 0; % open loop
 end
 u_cl = smooth_sat(U(1,:) + du); % cosh

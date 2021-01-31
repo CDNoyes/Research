@@ -99,9 +99,8 @@ sol.D = D;
 function [g,L,D] = entry_accels(x)
 global scale
 % constants
- [cl,cd] = aero_coeff();
-%  cd  = 1.408;
-% cl  = 0.357;
+[m,S,cl,cd] = aero_const();
+
 rp = 3396.2e3;
 mu = 4.2830e13;
 

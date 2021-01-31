@@ -89,7 +89,7 @@ end
 function [g,L,D] = entry_accels(x)
 global scale
 % constants
-[m,S,cl,cd] = aero_coeff();
+[m,S,cl,cd] = aero_const();
 
 rp = 3396.2e3;
 mu = 4.2830e13;
