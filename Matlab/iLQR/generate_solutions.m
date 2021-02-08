@@ -13,11 +13,11 @@ for i = 11:20
     inp.ut_scale = i;
     sol = entry_stochastic(inp);
     [hm, fm, sm, hv, fv, sv]=stats(sol);
-    sol.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+    sol.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
     if size(sol.u,1) == 4
-        sol = UTSolve(sol, sol.u(2:4,:)); 
+        sol = UTSolve(sol, sol.u(2:4,:));
     else
-        sol = UTSolve(sol, sol.input.gains); 
+        sol = UTSolve(sol, sol.input.gains);
     end
     save(['E:\Documents\GitHub\Research\Matlab\\iLQR\solutions\beta_sweep\MatlabBeta',num2str(inp.ut_scale)], 'sol');
     save(['E:\Documents\GitHub\Research\Matlab\\iLQR\solutions\beta_sweep\Beta',num2str(inp.ut_scale)], '-struct','sol');
@@ -37,12 +37,12 @@ if 1
         inp.horizon = 2000;
         sol = entry_stochastic_gains(inp);
         [hm, fm, sm, hv, fv, sv]=stats(sol);
-        sol.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+        sol.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
         sols{end+1} = UTSolve(sol, sol.u(2:4,:));
     end
     
     save('UTValidationSet2000.mat','sols');
-%     save('UTValidationSetQuu.mat','sols'); % Retains only Quu hessian terms
+    %     save('UTValidationSetQuu.mat','sols'); % Retains only Quu hessian terms
 else
     load UTValidationSet2000
 end
@@ -50,7 +50,7 @@ disp('');
 
 for i = 1:length(sols)
     S(i,:) = [sols{i}.weights(2), sols{i}.var(3,end)^0.5, sols{i}.ut.stats(3)/3];
-%     UTCompare(sols{i});
+    %     UTCompare(sols{i});
 end
 figure
 semilogy(S(:,1), S(:,2),'o')
@@ -70,7 +70,7 @@ end
 % CL = entry_stochastic(1, [wh, ws, wu], [0, 1]);
 % CLg = entry_stochastic_gains(inp);
 % [hm, fm, sm, hv, fv, sv]=stats(CLg);
-% CLg.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+% CLg.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
 % CLg = UTSolve(CLg, CLg.u(2:4,:));
 % save(['Robust',num2str(wh),num2str(ws),'.mat'],'-struct','CLg')
 % save(['Beta',num2str(inp.ut_scale),'.mat'],'-struct','CLg')
@@ -79,19 +79,19 @@ load ParametricUncertainty
 % sols = {OL, CL, CLg};
 for i = 1:4
     inp = DDPInput([i-1, i-1, 0.3]);
-%     sols{i} = entry_stochastic_gains_params(inp);
+    %     sols{i} = entry_stochastic_gains_params(inp);
     [hm, fm, sm, hv, fv, sv]=stats(sols{i});
-    sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
-%     sols{i} = UTSolve(sols{i}, sols{i}.u(2:4,:));
+    sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
+    %     sols{i} = UTSolve(sols{i}, sols{i}.u(2:4,:));
 end
 % save('ParametricUncertainty.mat','sols');
 % save('EqualWeightComparison.mat','sols')
 
-% load EqualWeightComparison 
+% load EqualWeightComparison
 % sols{3} = CLg;
 % i=3;
 % [hm, fm, sm, hv, fv, sv]=stats(sols{i});
-%     sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+%     sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
 
 load ParametricUncertainty
 plot_sol(sols{1}, 'k', 0.6,0);
@@ -100,11 +100,11 @@ plot_sol(sols{1}, 'k', 0.6,0);
 plot_sol(sols{4}, 'b', 0.6,0);
 
 for i = 1:4
-%     figure(i)
-%     legend('Mean Opt', 'w=1', 'w=2', 'w=3')
-%     legend('Mean Opt', 'w=3')
+    %     figure(i)
+    %     legend('Mean Opt', 'w=1', 'w=2', 'w=3')
+    %     legend('Mean Opt', 'w=3')
     data(i,:) = [sols{i}.stats(1), sols{i}.stats(1)-3*sols{i}.stats(4)^0.5, sols{i}.stats(6)^0.5/1000];
-%     legend('Open Loop', 'Closed Loop', 'Closed Loop + Gain Opt')
+    %     legend('Open Loop', 'Closed Loop', 'Closed Loop + Gain Opt')
 end
 figure(5)
 plot(0:3, data)
@@ -138,8 +138,8 @@ disp('Closed loop optimized jointly with gains')
 sols{3} = UTSolve(sols{3}, sols{3}.u(2:4,:)); % Optimal with optimized gains, 1000 pts
 
 % UTPlot(sol)
-% 
-% UTPlot(sols{1})  
+%
+% UTPlot(sols{1})
 % UTPlot(sols{1})
 
 UTCompare(sols{1})
@@ -147,7 +147,7 @@ UTCompare(sols{2})
 UTCompare(sols{3})
 % UTCompare(sols{4})
 
-% 
+%
 % OL_alt = entry_stochastic(0, 0, 0); % no cost on variances terms
 % CL_alt = entry_stochastic(1, 0, 0); % no cost on variances terms
 
@@ -155,16 +155,16 @@ UTCompare(sols{3})
 %% Generate solutions for comparison
 % three (open loop) altitude optimal solutions with different bank angle limits
 % choose one compromised solution, may wh = 2, ws = 1, or just do mean opt
-% again but closed loop to account for uncertainties 
+% again but closed loop to account for uncertainties
 
 % Then, fly closed loop UT for all 4 profiles
 if 1
-bounds = [[0,1];[0, 1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)]];
-W = zeros(4,3);
-
-W(1,:) = [1, 1, 0.2];
-sols = {};
-for i = 1:4
+    bounds = [[0,1];[0, 1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)]];
+    W = zeros(4,3);
+    
+    W(1,:) = [1, 1, 0.2];
+    sols = {};
+    for i = 1:4
         inp = DDPInput(W(i,:));
         inp.terminal_plots = false;
         inp.running_plots=false;
@@ -174,54 +174,60 @@ for i = 1:4
             inp.horizon = 250;
             sols{i} = entry_stochastic_gains_params(inp);
             [hm, fm, sm, hv, fv, sv]=stats(sols{i});
-            sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+            sols{i}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
         else
             inp.horizon = 2000;
             sols{i} = entry_vel(inp); % deterministic optimization
             sols{i}.stats = zeros(1,6);
         end
-
-end
-sols{1}=UTSolve(sols{1}, sols{1}.input.gains);
-% margin_sols = sols;
-% load solutions_cl_ddp_all
-% margin_sols{1} = sols{6};
-% sols = margin_sols;
-save('margin_comparison.mat','sols') % just in case, allows for reloading quickly 
-% load margin_comparison
-close all
-for i = 1:4
-    if i >= 2
-        sols{i}.Lm = sols{i}.L;
-        sols{i}.Dm = sols{i}.D;
+        
     end
+    sols{1}=UTSolve(sols{1}, sols{1}.input.gains);
+    % margin_sols = sols;
+    % load solutions_cl_ddp_all
+    % margin_sols{1} = sols{6};
+    % sols = margin_sols;
+    save('margin_comparison.mat','sols') % just in case, allows for reloading quickly
+    % load margin_comparison
+    close all
+    for i = 1:4
+        if i >= 2
+            sols{i}.Lm = sols{i}.L;
+            sols{i}.Dm = sols{i}.D;
+        end
+        
+        %     sols{i}=UTSolve(sols{i}, sols{1}.input.gains);
+        
+        %     stats(sols{i})
+        %     sols{i} = UTSolve(sols{i}, sols{i}.input.gains);
+        %     disp(sols{i}.ut.stats)
+        %     UTPlot(sols{i})
+    end
+    UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
     
-%     sols{i}=UTSolve(sols{i}, sols{1}.input.gains);
-
-%     stats(sols{i})
-%     sols{i} = UTSolve(sols{i}, sols{i}.input.gains);
-%     disp(sols{i}.ut.stats)
-%     UTPlot(sols{i})
-end
-UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
-
-close all
-plot_sol(sols{1}, 'k', 0.2, 0);
-plot_sol(sols{2}, 'c', 0.8, 0);
-plot_sol(sols{3}, 'b', 0.8, 0);
-plot_sol(sols{4}, 'r', 0.6, 0);
-
-j = 1;
-for i = 4:5
-    figure(i)
-%     legend('w_h=1, w_s=1', '[cos(90), cos(0)]','[cos(75), cos(15)]', '[cos(60), cos(30)]', 'location','best')
-%     legend('[0, 90]','[15, 75]', '[30, 60]', 'location','best')
-%     legend('w_h=3, w_s=0', 'w_h=0, w_s=3', 'w_h=1, w_s=1', 'location','best')
-
-        saveas(gcf, [sdir,'Robust',figs{i},'.png'])
-    j = j+1;
-
-end
+    
+    load solutions_cl_ddp_max
+    sols = {sols{1}, sols{13}, sols{4}};
+    
+    close all
+    plot_sol(sols{1}, 'k', 0.2, 0);
+    plot_sol(sols{2}, 'c', 0.8, 0);
+    plot_sol(sols{3}, 'b', 0.8, 0);
+    plot_sol(sols{4}, 'r', 0.6, 0);
+    
+    j = 1;
+    for i = 4:5
+        figure(i)
+        if 1
+            legend('[0, 90]','[15, 75]', '[30, 60]', 'location','southwest')
+            saveas(gcf, [sdir,'Nominal',figs{i},'.png'])
+        else
+            legend('w_h=0, w_s=0', 'w_h=3, w_s=0', 'w_h=0, w_s=3', 'location','best')
+            saveas(gcf, [sdir,'Robust',figs{i},'.png'])
+        end
+        j = j+1;
+        
+    end
 end
 %% Sweep over the weights
 
@@ -232,41 +238,45 @@ Wh = 0:1:3;
 % Ws = [0.5];
 % Wh = [0,0.25,0.75:0.5:3, 3];
 sols = {};
-for i = 1:length(Wh)
-    for j = 1:length(Ws)
+for j = 1:length(Ws)
+    for i = 1:length(Wh)
+
         disp(length(sols))
         wh = Wh(i);
         ws = Ws(j);
         inp = DDPInput([wh, ws, 0.2]);
         inp.terminal_plots = false;
-        inp.running_plots=false;
+        inp.running_plots = true;
         inp.horizon = 250;
-%         sols{end+1} = entry_stochastic(inp);
+        inp.ut_scale = 15;
+%         if ~isempty(sols)
+%             inp.guess = sols{end}.u; % Use the robust mean solution as guess
+%         end
         sols{end+1} = entry_stochastic_gains_params(inp);
         [hm, fm, sm, hv, fv, sv]=stats(sols{end});
-        sols{end}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats 
+        sols{end}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
         if size(sols{end}.u,1) == 4
-            sols{end} = UTSolve(sols{end}, sols{end}.u(2:4,:)); 
+            sols{end} = UTSolve(sols{end}, sols{end}.u(2:4,:));
         else
-            sols{end} = UTSolve(sols{end}, sols{end}.input.gains); 
+            sols{end} = UTSolve(sols{end}, sols{end}.input.gains);
         end
-        close all
+        
     end
 end
 
 
-% save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly 
-save('solutions_cl_ddp_max.mat','sols') % just in case, allows for reloading quickly 
+% save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly
+save('solutions_cl_ddp_max_guess.mat','sols') % just in case, allows for reloading quickly
 %%
 for i = 1:length(sols)
     sol = sols{i};
-%     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\gainopt\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
-%     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\fixed_gain\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
-%     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\all_unc\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
+    %     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\gainopt\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
+    %     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\fixed_gain\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
+    %     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\all_unc\','Sol',num2str(sol.weights(1)),num2str(sol.weights(2)),'.mat'],'-struct','sol')
     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\margin\','Sol',num2str(i),'.mat'],'-struct','sol')
-%     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\six_uncertainty\','Sol',num2str(i),'.mat'],'-struct','sol')
-
-disp(sol.mean(1,end))
+    %     save(['E:\Documents\GitHub\Research\Matlab\iLQR\solutions\six_uncertainty\','Sol',num2str(i),'.mat'],'-struct','sol')
+    
+    disp(sol.mean(1,end))
 end
 
 disp(' ');
@@ -336,7 +346,7 @@ c = colorbar;
 ylabel(c ,'Mean Range, km','fontsize',16)
 % scatter(W(keep,1),W(keep,2),[],'r')
 saveas(gcf, [sdir,'ClosedLoopRangeMean.png'])
-% It appears that more robust trajectories are longer 
+% It appears that more robust trajectories are longer
 
 % figure
 % surf(Xi, Yi, Si);
@@ -352,7 +362,7 @@ disp(W(imin,:))
 % plot_sol(sols{1}, 'k', 0.2,0);
 % plot_sol(sols{imax}, 'c', 0.8,0);
 % plot_sol(sols{10}, 'b', 0.8,0);
-% 
+%
 % for i = 1:4
 %     figure(i)
 %     legend('Mean Alt Opt', 'w_h=2, w_s=0', 'w_h=1, w_s=1')
@@ -366,7 +376,7 @@ plot_sol(sols{6}, 'c', 0.8,0);
 plot_sol(sols{11}, 'b', 0.8,0);
 plot_sol(sols{16}, 'r', 0.8,0);
 
-% For param unc 
+% For param unc
 % plot_sol(sols{1}, 'k', 0.2,0);
 % plot_sol(sols{5}, 'c', 0.8,0);
 % plot_sol(sols{9}, 'b', 0.8,0);
@@ -420,10 +430,10 @@ for i = 1:4
     figure(i)
     legend('w_h=0.0, w_s=0.0', 'w_h=0.001, w_s=0.01','w_h=0.001, w_s=0.1')
     
-%     legend('Mean Alt Opt', 'w_h=0.001, w_s=0.01')
+    %     legend('Mean Alt Opt', 'w_h=0.001, w_s=0.01')
     savefig([sdir,'OpenLoop_',figs{j}])
     j = j+1;
-
+    
 end
 
 plot_sol(CL_alt, 'k', 0.2, 4);
@@ -434,10 +444,10 @@ j = 1;
 for i = 5:8
     figure(i)
     legend('w_h=0.0, w_s=0.0', 'w_h=0.001, w_s=0.01','w_h=0.001, w_s=0.1')
-        savefig([sdir,'ClosedLoop_',figs{j}])
-
-        j = j+1;
-
+    savefig([sdir,'ClosedLoop_',figs{j}])
+    
+    j = j+1;
+    
 end
 
 function contour_plot()
@@ -464,8 +474,10 @@ disp(['fpa = ',num2str(fm),'  +/- 3*',num2str(fv.^0.5),' deg'])
 disp(['sf  = ',num2str(sm),'  +/- 3*', num2str(sv.^0.5),' km'])
 disp(' ')
 
-function plot_sol(sol, color, alpha, figure_offset)
-
+function plot_sol(sol, color, alpha, figure_offset, nsmooth)
+if nargin == 4
+    nsmooth = 40;
+end
 v = sol.v;
 
 hm = sol.mean(1,:);
@@ -473,46 +485,52 @@ fm = sol.mean(2,:)*180/pi;
 sm = sol.mean(3,:);
 
 if isfield(sol, 'var')
-hv = sol.var(1,:);
-fv = sol.var(2,:)*(180/pi)^2;
-sv = sol.var(3,:);
-if sm(end) > 2000
-    sm = sm/1000;
-    sv = sv/1000^2;
-end
-
-figure(1+figure_offset)
-hold all
-x2 = [v', fliplr(v')];
-inBetween = [(sm-3*sv.^0.5), fliplr((sm+3*sv.^0.5))];
-fill(x2, inBetween, color, 'Facealpha',alpha);
-
-xlabel('Velocity, m/s')
-ylabel('Downrange, km')
-grid on
-
-figure(2+figure_offset)
-hold all
-inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
-fill(x2, inBetween, color, 'Facealpha',alpha);
-
-
-xlabel('Velocity, m/s')
-ylabel('Altitude, km')
-grid on
-
-figure(3+figure_offset)
-hold all
-inBetween = [(fm-3*fv.^0.5), fliplr((fm+3*fv.^0.5))];
-fill(x2, inBetween, color, 'Facealpha',alpha);
-
-xlabel('Velocity, m/s')
-ylabel('FPA, deg')
-grid on
+    hv = sol.var(1,:);
+    fv = sol.var(2,:)*(180/pi)^2;
+    sv = sol.var(3,:);
+    if sm(end) > 2000
+        sm = sm/1000;
+        sv = sv/1000^2;
+    end
+    
+    figure(1+figure_offset)
+    hold all
+    x2 = [v', fliplr(v')];
+    inBetween = [(sm-3*sv.^0.5), fliplr((sm+3*sv.^0.5))];
+    fill(x2, inBetween, color, 'Facealpha',alpha);
+    
+    xlabel('Velocity, m/s')
+    ylabel('Downrange, km')
+    grid on
+    
+    figure(2+figure_offset)
+    hold all
+    inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
+    fill(x2, inBetween, color, 'Facealpha',alpha);
+    
+    
+    xlabel('Velocity, m/s')
+    ylabel('Altitude, km')
+    grid on
+    
+    figure(3+figure_offset)
+    hold all
+    inBetween = [(fm-3*fv.^0.5), fliplr((fm+3*fv.^0.5))];
+    fill(x2, inBetween, color, 'Facealpha',alpha);
+    
+    xlabel('Velocity, m/s')
+    ylabel('FPA, deg')
+    grid on
 end
 figure(4+figure_offset)
 hold all
-plot(v(1:end-1), smooth(sol.u(1,:), 20), 'linewidth', 3)
+if nsmooth > 0
+    plot(v(1:end-1), smooth(sol.u(1,:), nsmooth), 'linewidth', 3)
+else
+    plot(v(1:end-1), sol.u(1,:), 'linewidth', 3)
+
+end
+ylim([0,1])
 xlabel('Velocity, m/s')
 ylabel('cos(bank), -')
 grid on
@@ -520,6 +538,7 @@ grid on
 figure(5+figure_offset)
 hold all
 plot(v, sol.Dm, 'linewidth', 3)
+ylim([0, max(120, max(sol.Dm))])
 xlabel('Velocity, m/s')
 ylabel('Drag, m/s/s')
 grid on
@@ -530,14 +549,14 @@ if nargin == 1
     K = [0,0,0];
     k = @(v) K;
 else
-   if length(K(:)) == 3 % fixed gain scenario 
-    k = @(v) K;
-   else
-%        for i=1:3
-%            K(i,:) = smooth(K(i,:),5);
-%        end
-       k = @(v) interp1(sol.v, [K, K(:,end)]', v);
-   end
+    if length(K(:)) == 3 % fixed gain scenario
+        k = @(v) K;
+    else
+        %        for i=1:3
+        %            K(i,:) = smooth(K(i,:),5);
+        %        end
+        k = @(v) interp1(sol.v, [K, K(:,end)]', v);
+    end
 end
 sol.u(1,end) = sol.u(1,end-1);
 xr = @(v) interp1(sol.v, [sol.Dm; sol.mean(2:3,:)]', v);

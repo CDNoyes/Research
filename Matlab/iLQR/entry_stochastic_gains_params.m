@@ -17,7 +17,7 @@ global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu n_par
 % w_ are the cost weights
 
 n_states = 3;
-n_controls = 4; % open loop + 3 feedback terms
+n_controls = 1; % open loop + 3 feedback terms
 n_params = 3;
 
 if nargin == 0
@@ -92,7 +92,7 @@ kd = input.gains(1); %more lift up when too much drag
 ks = input.gains(2);  % less lift up when too close
 kf_scale = 200; % dont touch this
 kf = input.gains(3)/kf_scale;% less lift up when too shallow
-if ~isempty(input.guess)
+if ~isempty(input.guess) && n_controls > 1
     if size(input.guess,1) == 2
         L = input.guess(2,:)';
         disp('Loaded overcontrol from guess')
@@ -107,7 +107,7 @@ K0 = [L*kd, L*ks, L*kf]';
 
 % Op.lims  = [bounds; [0,1]; [-1,0];[-200, 0]/kf_scale]; % final gain is scaled in dynamics
 if n_controls == 4 %input.optimize_gains
-    Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % allow 'bad' sign gains
+    Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % don't allow 'bad' sign gains
     U0 = [u0;K0];
 elseif n_controls == 2
     Op.lims = [input.bounds; [0,10]]; % Time varying over control gain 
@@ -136,6 +136,7 @@ s = s/1000;
 [sm, sv] = get_stats(s);
 [fm, fv] = get_stats(fpa);
 [Dm, Dv] = get_stats(D);
+[Lm, Lv] = get_stats(L);
 
 sol.u = u;
 sol.v = v;
@@ -151,11 +152,13 @@ sol.input = input;
 sol.sigma_weights = weights;
 sol.L = L;
 sol.D = D;
+sol.Lm = Lm;
 sol.Dm = Dm;
 sol.Dv = Dv;
 
 print_stats(x(:,end));
 
+if input.terminal_plots
 % Plots
 lw = 2;
 
@@ -203,7 +206,7 @@ xlabel('Velocity, m/s')
 ylabel('Controls')
 legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
 grid on
-
+end
 
 function [h,v,fpa,s,g,L,D] = entry_accels(x)
 % constants
@@ -273,8 +276,13 @@ else
     end
 %     du = 0; % open loop
 end
-u_cl = smooth_sat(U(1,:) + du); % cosh
-
+if 0 % feedback wrt to reference control
+    u_cl = smooth_sat(U(1,:) + du); % cosh
+else
+    LoD = L./D;
+    LoDr = get_stats(LoD);
+    u_cl = smooth_sat(LoDr./LoD.*U(1,:) + du); % cosh
+end
 % Derivs
 sdot = v.*cos(fpa);
 hdot = v.*sin(fpa);
@@ -500,5 +508,5 @@ function print_stats(x)
 [hm, hv] = get_stats(h/1000);
 [sm, sv] = get_stats(s/1000);
 
-disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km'])
+disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km (3s low = ',num2str(hm-3*hv^0.5) ,')'])
 disp(['sf = ',num2str(sm),' +/- 3*', num2str(sv^0.5),' km'])

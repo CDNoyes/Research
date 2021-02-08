@@ -6,7 +6,8 @@ inp.terminal_plots = false;
 inp.horizon = 1000;
 
 lagrange = [0;0];
-penalty = 0.001;
+% lagrange = 0;
+penalty = 10;
 penalty_factor = 10; % multiply penalty by this value each time 
 
 for i = 1:10
