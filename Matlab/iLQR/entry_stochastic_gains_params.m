@@ -26,6 +26,7 @@ if nargin == 0
     wu = 0.3;
     input = DDPInput([wh,ws,wu]);
     input.ut_scale = 20-n_states-n_params;
+    input.ut_scale = 9;
     input.horizon = 250;
 end
 W = input.weights;
@@ -119,7 +120,6 @@ end
 Op.plot = input.running_plots;               % plot the derivatives as well
 Op.maxIter = 200;
 Op.parallel = 1;
-
 
 % === run the optimization!
 [x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, U0, Op);
@@ -510,3 +510,30 @@ function print_stats(x)
 
 disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km (3s low = ',num2str(hm-3*hv^0.5) ,')'])
 disp(['sf = ',num2str(sm),' +/- 3*', num2str(sv^0.5),' km'])
+
+function Kopt = optimize_gain(x0, u, guess)
+options = optimoptions('fminunc');
+% options.Algorithm = 'trust-region';
+N = length(u);
+obj = @(K) gain_opt_obj(x0, u, K, N);
+
+Kopt = fminunc(obj, guess, options);
+
+function std = gain_opt_obj(x0, u, K, N)
+
+x = forward_pass(x0, u, K, N);
+[h,v,fpa,s,g,L,D] = entry_accels(x(:,end));
+[~,std] = get_stats(s(:,end));
+[~,hstd] = get_stats(h(:,end));
+std = std + 0.1*hstd;
+
+function x = forward_pass(x0, u, K, N)
+global gains
+if ~isempty(K)
+    gains = @(V) K;
+end
+x = x0(:);
+
+for i = 1:N-1
+    x(:,i+1) = entry_dynamics(x(:,i), u(i));
+end
