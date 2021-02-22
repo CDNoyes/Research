@@ -159,18 +159,20 @@ UTCompare(sols{3})
 
 % Then, fly closed loop UT for all 4 profiles
 if 1
-    bounds = [[0,1];[0, 1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)]];
-    W = zeros(4,3);
+    bounds = [[0,1]; [cosd(90-15), cosd(15)]; [cosd(90-30), cosd(30)];[0, 1];[0, 1];[0, 1];];
+    W = zeros(6,3);
     
-    W(1,:) = [1, 1, 0.2];
+    W(4,:) = [0, 0, 0.2];
+    W(5,:) = [3, 0, 0.2];
+    W(6,:) = [0, 3, 0.2];
     sols = {};
-    for i = 1:4
+    for i = 1:6
         inp = DDPInput(W(i,:));
         inp.terminal_plots = false;
         inp.running_plots=false;
         inp.bounds = bounds(i,:);
-        if i == 1
-            inp.ut_scale = 17;
+        if i > 3
+            inp.ut_scale = 15;
             inp.horizon = 250;
             sols{i} = entry_stochastic_gains_params(inp);
             [hm, fm, sm, hv, fv, sv]=stats(sols{i});
@@ -182,16 +184,15 @@ if 1
         end
         
     end
-    sols{1}=UTSolve(sols{1}, sols{1}.input.gains);
+%     sols{1}=UTSolve(sols{1}, sols{1}.input.gains);
     % margin_sols = sols;
     % load solutions_cl_ddp_all
     % margin_sols{1} = sols{6};
     % sols = margin_sols;
-    save('margin_comparison.mat','sols') % just in case, allows for reloading quickly
     % load margin_comparison
     close all
-    for i = 1:4
-        if i >= 2
+    for i = 1:length(sols)
+        if i < 4
             sols{i}.Lm = sols{i}.L;
             sols{i}.Dm = sols{i}.D;
         end
@@ -203,9 +204,11 @@ if 1
         %     disp(sols{i}.ut.stats)
         %     UTPlot(sols{i})
     end
-    UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
-    
-    
+        save('margin_comparison.mat','sols') % just in case, allows for reloading quickly
+
+%     UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
+end
+    %%
     load solutions_cl_ddp_max
     sols = {sols{1}, sols{13}, sols{4}};
     
@@ -228,7 +231,7 @@ if 1
         j = j+1;
         
     end
-end
+
 %% Sweep over the weights
 
 Ws = 0:1:3;

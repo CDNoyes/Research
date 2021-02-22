@@ -23,13 +23,11 @@ input.closed_loop = true;
 % input.gains = [0.1, -0.1, -50]; % Old guess
 % input.gains = [0.2589,   -0.0917,   -5.2318]; % Optimized for P0 with a guess traj and UT=17
 input.gains = [0.0725, -0.025, -4]; % D S fpa 
-% input.gains = [0.0560, -0.0179, -0.0138]; % D S hdot
-
 
 % Vehicle Info
 input.bounds = [0, 1]; % feed forward control limits 
 input.mass = 5000;
-input.coeff = [0.357, 1.408]; % L/D~0.2536
+% input.coeff = [0.357, 1.408]; 
 
 % Algorithmic Parameters
 input.terminal_plots = true;
