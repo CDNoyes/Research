@@ -99,6 +99,7 @@ sol.D = D;
 sol.Lm = Lm;
 sol.Dm = Dm;
 sol.Dv = Dv;
+sol.Lv = Lv;
 
 print_stats(x(:,end));
 
