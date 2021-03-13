@@ -2,6 +2,8 @@ function generate_solutions
 sdir = 'E:\Documents\EDL\Documents\PropellantOptimalJournal\ddp\matlab\';
 
 figs = {'Range','Altitude','Fpa','Control','Drag'};
+load solutions_cl_ddp_max_guess.mat
+sol = UTSolve(sols{end}, sols{end}.input.gains);
 
 %% Single Data Point UT Validation, find a decent solution with fixed gains, determine appropriate beta
 wh = 1;
@@ -204,7 +206,7 @@ if 1
         %     disp(sols{i}.ut.stats)
         %     UTPlot(sols{i})
     end
-        save('margin_comparison.mat','sols') % just in case, allows for reloading quickly
+        save('margin_comparison_0p24.mat','sols') % just in case, allows for reloading quickly
 
 %     UTCompare(sols{1}) % just a method to determine visually if we're discretizing accurately enough
 end
@@ -235,11 +237,8 @@ end
 %% Sweep over the weights
 
 Ws = 0:1:3;
-Wh = 0:1:3;
-% Ws = 0.5:1:2.5;
-% Wh = 0.5:1:2.5;
-% Ws = [0.5];
-% Wh = [0,0.25,0.75:0.5:3, 3];
+Wh = 0:1:10;
+
 sols = {};
 for j = 1:length(Ws)
     for i = 1:length(Wh)
@@ -247,9 +246,9 @@ for j = 1:length(Ws)
         disp(length(sols))
         wh = Wh(i);
         ws = Ws(j);
-        inp = DDPInput([wh, ws, 0.2]);
+        inp = DDPInput([wh, ws, 0.1]);
         inp.terminal_plots = false;
-        inp.running_plots = true;
+        inp.running_plots = false;
         inp.horizon = 250;
         inp.ut_scale = 15;
 %         if ~isempty(sols)
@@ -258,18 +257,18 @@ for j = 1:length(Ws)
         sols{end+1} = entry_stochastic_gains_params(inp);
         [hm, fm, sm, hv, fv, sv]=stats(sols{end});
         sols{end}.stats = [hm, fm, sm, hv, fv, sv]; % terminal stats
-        if size(sols{end}.u,1) == 4
-            sols{end} = UTSolve(sols{end}, sols{end}.u(2:4,:));
-        else
-            sols{end} = UTSolve(sols{end}, sols{end}.input.gains);
-        end
+%         if size(sols{end}.u,1) == 4
+%             sols{end} = UTSolve(sols{end}, sols{end}.u(2:4,:));
+%         else
+%             sols{end} = UTSolve(sols{end}, sols{end}.input.gains);
+%         end
         
     end
 end
 
 
 % save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly
-save('solutions_cl_ddp_max_guess.mat','sols') % just in case, allows for reloading quickly
+save('msl_weight_sweep.mat','sols') % just in case, allows for reloading quickly
 %%
 for i = 1:length(sols)
     sol = sols{i};
@@ -453,9 +452,6 @@ for i = 5:8
     
 end
 
-function contour_plot()
-figure
-plot()
 
 function [hm, fm, sm, hv, fv, sv]=stats(sol)
 hm = sol.mean(1,end)/1000;
@@ -565,8 +561,9 @@ sol.u(1,end) = sol.u(1,end-1);
 xr = @(v) interp1(sol.v, [sol.Dm; sol.mean(2:3,:)]', v);
 % u = smooth([sol.u(1,:), sol.u(1,end)], 5);
 u = [sol.u(1,:), sol.u(1,end)];
+load InitialState
 
-[V,X,U] = UnscentedEntry(sol.v, sol.X0, @(v)interp1(sol.v', u, v), k, sol.sigma_weights, xr);
+[V,X,U] = UnscentedEntry(sol.v, X0, @(v)interp1(sol.v', sol.Lm/sol.Dm*u, v), k, sol.sigma_weights, xr);
 sol.ut.v = V;
 sol.ut.x = X;
 sol.ut.u = U;

@@ -71,6 +71,12 @@ sol.input = inp;
 sol.sigma_weights = 1;
 sol.L = L;
 sol.D = D;
+[m,S,cl,cd] = aero_const();
+sol.mass = m;
+sol.area = S;
+sol.cl = cl;
+sol.cd = cd;
+sol.BC = m/(S*cd);
 
 if inp.terminal_plots
 figure

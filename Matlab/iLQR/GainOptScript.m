@@ -17,3 +17,24 @@ inp.guess = sols{1}.u;
 sols{2} = FixedGainOpt(inp);
 
 save('DetailedExample', 'sols')
+
+%% Load a file and it creates a new one with _optimized
+% fname = 'margin_comparison_0p24';
+fname = 'msl_weight_sweep';
+fname_new = [fname,'_optimized'];
+load(fname);
+inp = DDPInput([0,0,0.2]);
+
+
+for i = 1:length(sols)
+    inp.terminal_plots = false;
+    inp.running_plots = false;
+    inp.horizon = 250;
+    inp.ut_scale = 4;
+    inp.weights = sols{i}.weights;
+    inp.guess = sols{i}.u;
+    sols{i} = FixedGainOpt(inp);
+    gains(i,:) = sols{i}.input.gains;
+end
+
+save(fname_new, 'sols')

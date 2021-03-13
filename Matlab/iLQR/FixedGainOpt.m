@@ -100,6 +100,12 @@ sol.Lm = Lm;
 sol.Dm = Dm;
 sol.Dv = Dv;
 sol.Lv = Lv;
+[m,S,cl,cd] = aero_const();
+sol.mass = m;
+sol.area = S;
+sol.cl = cl;
+sol.cd = cd;
+sol.BC = m/(S*cd);
 
 print_stats(x(:,end));
 
@@ -297,7 +303,7 @@ x = forward_pass(x0, u, K, N);
 [~,std] = get_stats(s(:,end));
 [hm,hstd] = get_stats(h(:,end));
 out = -hm + W(2)*std^0.5 + W(1)*hstd^0.5; % match the actual cost fun
-% out = std^0.5 + 0.1*hstd^0.5;
+% out = (std^0.5 + 0.02*hstd^0.5)/1000;
 
 function x = forward_pass(x0, u, K, N)
 x = x0(:);

@@ -66,7 +66,6 @@ else
     % Param Unc only, deterministic initial state 
 %     per = 20;
 %     P0 = 1*diag(per/100/3*ones(n_params,1)).^2;
-
     per = [10,10,30];
     P0 = 1*diag(per/100/3).^2;
     [p0, weights] = UnscentedTransform(ones(n_params,1), P0, input.ut_scale);
@@ -156,6 +155,14 @@ sol.Lm = Lm;
 sol.Dm = Dm;
 sol.Dv = Dv;
 sol.Lv = Lv;
+
+[m,S,cl,cd] = aero_const();
+sol.mass = m;
+sol.area = S;
+sol.cl = cl;
+sol.cd = cd;
+sol.BC = m/(S*cd);
+
 
 print_stats(x(:,end));
 
@@ -469,7 +476,7 @@ function c = pp(a,b)
 c = bsxfun(@plus,a,b);
 
 
-function [h,v,fpa,s, fcl, fcd,frho,fhs] = get_states(x)
+function [h,v,fpa,s, fcl, fcd,frho] = get_states(x)
 global scale n_samples v0 n_params
 
 iv = 1;

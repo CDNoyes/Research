@@ -1,8 +1,5 @@
 function input = DDPInput(weights)
 
-% Because of how annoying structs are to work with in python, don't reorder
-% any of these! Add new terms to the end
-
 input.ddp = true;
 % Initial State and Covariance 
 % input.v0 = 5525;
@@ -20,14 +17,11 @@ input.weights = weights; % objective function weights
 input.ut_scale = 17; % Unscented Transform scale factor for computing sigma
 input.optimize_gains = true;
 input.closed_loop = true;
-% input.gains = [0.1, -0.1, -50]; % Old guess
-% input.gains = [0.2589,   -0.0917,   -5.2318]; % Optimized for P0 with a guess traj and UT=17
-input.gains = [0.0725, -0.025, -4]; % D S fpa 
+input.gains = [0.0725, -0.025, -4]; % D S fpa for the heavy vehicle
+% input.gains = [0.1,-0.035, -5 ]; % for MSL-like vehicle 
 
 % Vehicle Info
 input.bounds = [0, 1]; % feed forward control limits 
-input.mass = 5000;
-% input.coeff = [0.357, 1.408]; 
 
 % Algorithmic Parameters
 input.terminal_plots = true;
