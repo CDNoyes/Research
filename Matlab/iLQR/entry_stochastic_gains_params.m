@@ -26,7 +26,7 @@ if nargin == 0
     wu = 0.3;
     input = DDPInput([wh,ws,wu]);
     input.ut_scale = 20-n_states-n_params;
-    input.ut_scale = 9;
+    input.ut_scale = 15;
     input.horizon = 250;
 end
 W = input.weights;

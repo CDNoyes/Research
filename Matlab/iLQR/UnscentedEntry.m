@@ -1,5 +1,6 @@
 function [V,X,U] = UnscentedEntry(V, X0, u, K, W, Xr)
 %%% Xr should be interpolant of [D, fpa, s]
+% W is the UT sigma point weights to compute mean/var
 
 global n_samples weights scale
 n_samples = length(X0)/6;

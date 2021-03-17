@@ -3,8 +3,9 @@ sdir = 'E:\Documents\EDL\Documents\PropellantOptimalJournal\ddp\matlab\';
 
 figs = {'Range','Altitude','Fpa','Control','Drag'};
 load solutions_cl_ddp_max_guess.mat
-sol = UTSolve(sols{end}, sols{end}.input.gains);
-
+i = 6;
+sol = UTSolve(sols{i}, sols{i}.input.gains);
+UTCompare(sol)
 %% Single Data Point UT Validation, find a decent solution with fixed gains, determine appropriate beta
 wh = 1;
 ws = 1;
