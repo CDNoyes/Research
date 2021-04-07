@@ -24,9 +24,9 @@ n_controls = 1; % open loop + 3 feedback terms
 n_params = 0;
 
 if nargin == 0
-    wh = 3;
-    ws = 0.75;
-    wu = 0.3;
+    wh = 0;
+    ws = 0;
+    wu = 0;
     input = DDPInput([wh,ws,wu]);
     input.ut_scale = 20-n_states-n_params;
     input.ut_scale = 15;
@@ -36,7 +36,6 @@ W = input.weights;
 wh = W(1);
 ws = W(2);
 wu = W(3);
-full_DDP = input.ddp;
 
 % Scale states for numerical condition
 hscale = 120e3;
@@ -50,10 +49,9 @@ scale = [hscale, lonscale, latscale, fpascale, psiscale, vscale];
 v0 = input.v0;
 
 % set up the optimization problem
-DYNCST  = @(x,u,i) entry_dyn_cst(x, u, full_DDP);
 V       = input.vf; % terminal velocity, m/s
 dV      = V-v0;
-T       = input.horizon;       
+T       = input.horizon;
 ds      = dV/T;
 
 % Initial States
@@ -71,11 +69,15 @@ fprintf(['Samples = ',num2str(n_samples),'\nTotal State Dimension = ',num2str(le
 
 % Initial Control
 if isempty(input.guess)
-% u0      = ones(1,floor(T))*0.4;
-% u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
-% u0 = [linspace(0.35, 1, T-floor(T/4)), ones(1,floor(T/4))];
+    % u0      = ones(1,floor(T))*0.4;
+    % u0 =     [zeros(1, floor(1600/ds)), ones(1,T-floor((1600)/ds))]; % good guess
+    % u0 = [linspace(0.35, 1, T-floor(T/4)), ones(1,floor(T/4))];
     u0 = linspace(0.35, 1, T);
-    u0 = acos(u0); % bank angle magnitude 
+    u0 = acos(u0); % bank angle magnitude
+    temp = linspace(V,v0,T);
+    vs = 2630;
+%     u0(temp < vs) = -u0(temp < vs);
+%     u0 = sin(u0);
 else
     u0 = input.guess(1,:);
     disp('Loaded reference control from guess')
@@ -104,113 +106,161 @@ if n_controls == 4 %input.optimize_gains
     Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % don't allow 'bad' sign gains
     U0 = [u0;K0];
 elseif n_controls == 2
-    Op.lims = [input.bounds; [0,10]]; % Time varying over control gain 
+    Op.lims = [input.bounds; [0,10]]; % Time varying over control gain
     U0 = [u0;L'];
 else
-    Op.lims  = input.bounds; 
+    Op.lims  = [-90,90]*pi/180; % bank angle as control 
+%     Op.lims = [-1,1] * 0.98; % reserve small amount from sides
     U0 = u0;
 end
 Op.plot = input.running_plots;               % plot the derivatives as well
-Op.maxIter = 200;
+Op.maxIter = 100; % Set relatively low bc repeated iterations
 Op.parallel = 1;
 
 % === run the optimization!
-x = forward_pass(X0_vector, u0, [0;0;0], T);
-% [x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, U0, Op);
+% x = forward_pass(X0_vector, u0, K0, T);
+% u = u0;
+% cost = 0;
+
+% lagrange = [0;0];
+lagrange = [0,0];
+penalty = 1;
+penalty_factor = 10; % multiply penalty by this value each time 
+u = u0;
+for i = 1:5
+    disp(['Lagrange/Penalty Update Iteration ', num2str(i)])
+
+    DYNCST  = @(X,U,j) entry_dyn_cst(X, U, lagrange, penalty);
+    [x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, u, Op);
+    constraint_value = entry_constraints(x(:,end),u)
+    if max(abs(constraint_value)) < 1e-4  % if the crossrange is under _ km, good enough 
+        break
+    end
+    lagrange = lagrange + penalty*constraint_value'
+    penalty = penalty * penalty_factor
+
+end
 
 if n_controls == 4
     u(4,:) = u(4,:)*kf_scale;
 end
 
-% Compute stats and setup the output structure
+% Compute stats and setup the output structure 
 [v,h,lon,lat,fpa,psi,g,L,D] = entry_accels(x);
 v=v';
 
-s = lon*3396.2; %TODO: compute actual downrange 
+s = lon*3396.2e3; %TODO: compute actual downrange
+cr = -lat*3396.2;
 [hm, hv] = get_stats(h);
 [sm, sv] = get_stats(s);
 [fm, fv] = get_stats(fpa);
 [Dm, Dv] = get_stats(D);
 [Lm, Lv] = get_stats(L);
 [latm,latv] = get_stats(lat);
+[psim,psiv] = get_stats(psi * 180/pi); % deg 
+crm = latm*-3396.2;
 
-sol.u = u;
-sol.v = v;
-sol.mean = [hm; fm; sm];
-sol.var = [hv; fv; sv];
-sol.h = h;
-sol.fpa = fpa;
-sol.s = s;
-sol.weights = [wh,ws,wu];
-sol.cost = sum(cost);
-sol.X0 = [h(:,1)',fpa(:,1)',s(:,1)'];
-sol.input = input;
-sol.sigma_weights = weights;
-sol.L = L;
-sol.D = D;
-sol.Lm = Lm;
-sol.Dm = Dm;
-sol.Dv = Dv;
-sol.Lv = Lv;
-
-[m,S,cl,cd] = aero_const();
-sol.mass = m;
-sol.area = S;
-sol.cl = cl;
-sol.cd = cd;
-sol.BC = m/(S*cd);
-
-
+if nargout
+    sol.u = u;
+    sol.v = v;
+    % sol.mean = [hm; fm; sm];
+    % sol.var = [hv; fv; sv];
+    sol.h = h;
+    sol.fpa = fpa;
+    sol.s = s;
+    sol.weights = [wh,ws,wu];
+    sol.cost = sum(cost);
+    % sol.X0 = [h(:,1)',fpa(:,1)',s(:,1)'];
+    sol.input = input;
+    sol.sigma_weights = weights;
+    sol.L = L;
+    sol.D = D;
+    sol.Lm = Lm;
+    sol.Dm = Dm;
+    sol.Dv = Dv;
+    sol.Lv = Lv;
+    
+    [m,S,cl,cd] = aero_const();
+    sol.mass = m;
+    sol.area = S;
+    sol.cl = cl;
+    sol.cd = cd;
+    sol.BC = m/(S*cd);
+end
 print_stats(x(:,end));
 
 if input.terminal_plots
-% Plots
-lw = 2;
-
-figure
-x2 = [v', fliplr(v')];
-inBetween = [(sm-3*sv.^0.5)/1000, fliplr((sm+3*sv.^0.5)/1000)];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, s'/1000, 'k--','linewidth', 1)
-plot(v, sm/1000, 'm', 'linewidth', lw)
-
-xlabel('Velocity, m/s')
-ylabel('Downrange, km')
-grid on
-
-figure
-x2 = [v', fliplr(v')];
-inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, h'/1000, 'k--','linewidth', 1)
-plot(v, hm/1000, 'm', 'linewidth', lw)
-
-xlabel('Velocity m/s')
-ylabel('Altitude km')
-grid on
-
-figure
-inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, D', 'k--','linewidth', 1)
-plot(v, Dm, 'm', 'linewidth', lw)
-xlabel('Velocity, m/s')
-ylabel('Drag, m/s^2')
-grid on
-
-figure
-plot(v(1:end-2), u(1,1:end-1), 'k', 'linewidth', lw)
-hold all
-if n_controls > 1
-    plot(v(1:end-2), u(2:end,1:end-1), 'linewidth', 1)
-end
-xlabel('Velocity, m/s')
-ylabel('Controls')
-legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
-grid on
+    % Plots
+    lw = 2;
+    
+    figure
+    hold all
+    plot(cr', s'/1000, 'k--','linewidth', 1)
+    plot(crm, sm/1000, 'm', 'linewidth', lw)
+    
+    xlabel('Crossrange, km')
+    ylabel('Downrange, km')
+    grid on
+    
+    figure
+    x2 = [v', fliplr(v')];
+    inBetween = [(sm-3*sv.^0.5)/1000, fliplr((sm+3*sv.^0.5)/1000)];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, s'/1000, 'k--','linewidth', 1)
+    plot(v, sm/1000, 'm', 'linewidth', lw)
+    
+    xlabel('Velocity, m/s')
+    ylabel('Downrange, km')
+    grid on
+    
+    figure
+    x2 = [v', fliplr(v')];
+    inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, h'/1000, 'k--','linewidth', 1)
+    plot(v, hm/1000, 'm', 'linewidth', lw)
+    
+    xlabel('Velocity m/s')
+    ylabel('Altitude km')
+    grid on
+    
+    figure
+    inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, D', 'k--','linewidth', 1)
+    plot(v, Dm, 'm', 'linewidth', lw)
+    xlabel('Velocity, m/s')
+    ylabel('Drag, m/s^2')
+    grid on
+    
+    figure
+    plot(v(1:end-2), u(1,1:end-1), 'k', 'linewidth', lw)
+    hold all
+    if n_controls > 1
+        plot(v(1:end-2), u(2:end,1:end-1), 'linewidth', 1)
+    end
+    xlabel('Velocity, m/s')
+    ylabel('Controls')
+    if n_controls>1
+    legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
+    end
+    grid on
+    
+    
+    figure
+    x2 = [v', fliplr(v')];
+    inBetween = [(psim-3*psiv.^0.5), fliplr((psim+3*psiv.^0.5))];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, psi', 'k--','linewidth', 1)
+    plot(v, psim, 'm', 'linewidth', lw)
+    
+    xlabel('Velocity, m/s')
+    ylabel('Heading, deg')
+    grid on
 end
 
 function [v,h,lon,lat,fpa,psi,g,L,D] = entry_accels(x)
@@ -245,7 +295,7 @@ for i = 1:n_int_steps
 end
 
 function x = entry_step(x, U)
-global scale n_states n_params
+global scale n_states
 
 % === states and controls:
 % x = [h lon lat gamma heading]'
@@ -259,33 +309,42 @@ rp = 3396.2e3;
 
 % u = U(1,:);
 % K = U(2:4,:);
-s = 3396.2 * theta; % approximation 
+s = 3396.2 * theta; % approximation
 
 % feedback terms
 ef = get_error(fpa);
-es = get_error(s/1000);
+es = get_error(s);
 eD = get_error(D);
 if size(U,1)>2
     du = U(2,:).*eD + U(3,:).*es + U(4,:).*ef*200;
 else
     du = 0.0725*eD + -0.025*es + -4*ef; % [0.0725, -0.025, -4]
     if size(U,1)>1
-        du = du.*U(2,:); % apply the overcontrol gain 
+        du = du.*U(2,:); % apply the overcontrol gain
     end
-%     du = 0; % open loop
+        du = 0; % open loop
 end
 
 LoD = L./D;
 LoDr = get_stats(LoD);
+% feedback
 u_cl = smooth_sat(LoDr./LoD.*cos(U(1,:)) + du); % cosh
+s_cl = sign(U(1,:)).*sin(acos(Saturate(u_cl,0,1)));
+
+% no feedback  - bank angle as control 
+u_cl = cos(U(1,:));
+s_cl = sin(U(1,:));
+
+% s_cl = U(1,:);
+% u_cl = sqrt(1-s_cl.^2);
 
 % Derivs
-thetadot = v./(rp+h).*cos(fpa).*cos(psi)./cos(phi); 
+thetadot = v./(rp+h).*cos(fpa).*cos(psi)./cos(phi);
 phidot = v./(rp+h).*cos(fpa).*sin(psi);
 hdot = v.*sin(fpa);
 vdot = -D-g.*sin(fpa);
 fpadot = L./v.*u_cl + (v./(rp+h) - g./v).*cos(fpa);
-psidot = -1./v./cos(fpa).*(L.*sin(U(1,:)) + v.^2./(rp+h).*cos(fpa).^2.*cos(psi).*tan(phi));
+psidot = -1./v./cos(fpa).*(L.*s_cl + v.^2./(rp+h).*cos(fpa).^2.*cos(psi).*tan(phi));
 xdot = [hdot/scale(1); thetadot/scale(2); phidot/scale(3); fpadot/scale(4); psidot/scale(5)];            % change in state
 
 x = [1/scale(6)+v*0; xdot.*repmat(1./vdot, n_states, 1)]; % really dx/dv
@@ -301,14 +360,14 @@ function er = get_error(state)
 er = state - get_stats(state);
 % the mean subtracted from all the points
 
-function c = entry_cost(x, u)
+function c = entry_cost(x, u, lagrange, penalty)
 global ds wh ws wu
 
 cost_scale = 10000;
 
 % states
 [v,h,theta,phi,fpa,psi,g,L,D] = entry_accels(x);
-s = 3396.2 * theta; % approximation 
+s = 3396.2e3 * theta; % approximation
 
 % cost function
 % sum of terms:
@@ -323,12 +382,14 @@ u(:,final)  = 0;
 % running cost terms
 hdot = v.*sin(fpa);
 vdot = -D - g.*sin(fpa);
-hprime = -hdot./vdot * ds; 
+hprime = -hdot./vdot * ds;
 hprime = get_stats(hprime); % expected value of running cost
 
 sdot = v.*cos(fpa); % meters/second
 [smean, svar] = get_stats(s); % m
 [hmean, hvar] = get_stats(h); % m
+% [latmean,latvar] = get_stats(phi); % rad
+% [psimean,psivar] = get_stats(psi);
 
 vs_dot = 2*get_stats(s.*sdot./vdot) - 2*smean.*get_stats(sdot./vdot);
 vh_dot = 2*get_stats(h.*hdot./vdot) - 2*hmean.*get_stats(hdot./vdot);
@@ -340,14 +401,30 @@ vh_dot = 0.5*vh_dot./((hvar + 0.0001).^0.5);
 lx = hprime + ws*vs_dot*ds + wh*vh_dot*ds;
 
 % control cost
-lu    = wu*(u(1,:)-0.5).^2 * ds.* v/2500; % this term is for smoothness
-% lu    = wu*(sum(u(2:end,:).^2,1)+ (u(1,:)-0.5).^2) * ds.* v/2500; % this term is for smoothness
+lu    = wu*(cos(u(1,:))-0.5).^2 * ds.* v/2500; % this term is for smoothness
+
+% Constraint terms
+cons = entry_constraints(x,u);
+if any(final)
+    con = zeros(size(cons,1),size(u,2));
+    con(:,final) = cons(:,final);
+else
+    con = 0*lagrange';
+end
 
 % total cost
-c     = (lu + lx)/cost_scale;
+c     = (lu + lx + lagrange*con + 0.5*penalty*sum(con.^2,1))/cost_scale;
 
+function c = entry_constraints(x,u)
+[v,h,lon,lat,fpa,psi] = get_states(x);
+sm = get_stats(3396.2*lon);
+latm = get_stats(lat);
+% c = sm - 295;  %fixed dr
+% c = 3397*latm;
+c = [latm*3397; sm-295];% final latitude = 0 and fixed DR
+% c = [lat*3397; 0*s]; % final latitude = 0
 
-function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP)
+function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,lagrange,penalty)
 global n_states n_samples n_controls n_params
 
 % combine dynamics and cost
@@ -355,7 +432,7 @@ global n_states n_samples n_controls n_params
 
 if nargout == 2
     f = entry_dynamics(x,u);
-    c = entry_cost(x,u);
+    c = entry_cost(x,u,lagrange,penalty);
 else
     % state and control indices
     ix = 1:(1+(n_states+n_params)*n_samples);
@@ -368,44 +445,39 @@ else
     fu      = J(:,iu,:);
     
     % dynamics second derivatives
-    if full_DDP
-        if 0
-            N_J = size(J);
-            xu_Jcst = @(xu) complex_difference(xu_dyn, xu);
-            JJ      = finite_difference(xu_Jcst, [x; u]);
-            if N_J <= 2
-                JJ = reshape(JJ,[ix(end) iu(end) N_J(2)]);
-            else
-                JJ = reshape(JJ, [ix(end) iu(end) N_J(2) N_J(3)]);
-            end
-            JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
-            fxx     = JJ(:,ix,ix,:);
-            fxu     = JJ(:,ix,iu,:); % Appears to be least important 
-            fuu     = JJ(:,iu,iu,:);
-            
-        else % Only compute hessian wrt control
-            % For two params and no state uncertainty, this cut the time
-            % per iteration by more than half, but convergence definitely
-            % isnt as good as with full derivs. But still noticeably better
-            % than no Hessians at all. The improvement in time and storage
-            % will only get better as the uncertainty grows
-            %(more params or back to including state uncertainty as well)
-            u_dyn  = @(u) entry_dynamics(x, u);
-            u_Jcst = @(u) complex_difference(u_dyn, u);
-            fuu = finite_difference(u_Jcst, u);
-            fuu = reshape(fuu, [ix(end) n_controls n_controls size(J,3)]);
-            fuu = 0.5*(fuu + permute(fuu,[1 3 2 4]));
-            fxx = [];
-            fxu = [];
+    if 0
+        N_J = size(J);
+        xu_Jcst = @(xu) complex_difference(xu_dyn, xu);
+        JJ      = finite_difference(xu_Jcst, [x; u]);
+        if N_J <= 2
+            JJ = reshape(JJ,[ix(end) iu(end) N_J(2)]);
+        else
+            JJ = reshape(JJ, [ix(end) iu(end) N_J(2) N_J(3)]);
         end
-        
-        
-    else
-        [fxx,fxu,fuu] = deal([]);
+        JJ      = 0.5*(JJ + permute(JJ,[1 3 2 4])); %symmetrize
+        fxx     = JJ(:,ix,ix,:);
+        fxu     = JJ(:,ix,iu,:); % Appears to be least important
+        fuu     = JJ(:,iu,iu,:);
+
+    else % Only compute hessian wrt control
+        % For two params and no state uncertainty, this cut the time
+        % per iteration by more than half, but convergence definitely
+        % isnt as good as with full derivs. But still noticeably better
+        % than no Hessians at all. The improvement in time and storage
+        % will only get better as the uncertainty grows
+        %(more params or back to including state uncertainty as well)
+        u_dyn  = @(u) entry_dynamics(x, u);
+        u_Jcst = @(u) complex_difference(u_dyn, u);
+        fuu = finite_difference(u_Jcst, u);
+        fuu = reshape(fuu, [ix(end) n_controls n_controls size(J,3)]);
+        fuu = 0.5*(fuu + permute(fuu,[1 3 2 4]));
+        fxx = [];
+        fxu = [];
     end
+        
     
     % cost first derivatives
-    xu_cost = @(xu) entry_cost(xu(ix,:),xu(iu,:));
+    xu_cost = @(xu) entry_cost(xu(ix,:),xu(iu,:),lagrange,penalty);
     J       = squeeze(complex_difference(xu_cost, [x; u]));
     cx      = J(ix,:);
     cu      = J(iu,:);
@@ -480,7 +552,7 @@ h = x(ih,:)*scale(1); % m
 lon = x(ilon,:)*scale(2);
 lat = x(ilat,:)*scale(3);
 fpa = x(ifpa,:)*scale(4);
-psi = x(ipsi,:)*scale(5); 
+psi = x(ipsi,:)*scale(5);
 
 
 
@@ -493,13 +565,17 @@ if nargout > 1
 end
 
 function print_stats(x)
-[h,~,~,s] = get_states(x);
+[v,h,lon,lat,fpa,psi] = get_states(x);
 
+s = lon*3396.2e3; %TODO: compute actual downrange
+cr = -lat*3396.2;
 [hm, hv] = get_stats(h/1000);
 [sm, sv] = get_stats(s/1000);
+[crm,crv] = get_stats(cr);
 
 disp(['hf = ',num2str(hm),' +/- 3*',num2str(hv^0.5),' km (3s low = ',num2str(hm-3*hv^0.5) ,')'])
 disp(['sf = ',num2str(sm),' +/- 3*', num2str(sv^0.5),' km'])
+disp(['crf = ',num2str(crm),' +/- 3*', num2str(crv^0.5),' km'])
 
 
 function Kopt = optimize_gain(x0, u, guess)

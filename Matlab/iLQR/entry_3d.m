@@ -50,7 +50,7 @@ Op.parallel = 1;
 
 % === run the optimization!
 
-    [x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
+[x, u, L, Vx, Vxx, cost, trace, stop] = iLQG(DYNCST, x0, u0, Op);
     
 [g,L,D] = entry_accels(x);
 h = x(1,:)*scale(1);
@@ -223,8 +223,8 @@ phi = x(3,:)*scale(3);
 % v = x(4,:)*scale(4);
 % fpa = x(5,:)*scale(5);
 % psi = x(6,:)*scale(6);
-% c = [phi*3397; s/1000-350];% final latitude = 0 and fixed DR
-c = [phi*3397; 0*s]; % final latitude = 0
+c = [phi*3397; s/1000-350];% final latitude = 0 and fixed DR
+% c = [phi*3397; 0*s]; % final latitude = 0
 
 
 function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,full_DDP,lagrange,penalty)
