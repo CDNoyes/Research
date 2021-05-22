@@ -15,7 +15,7 @@ fprintf(['\nUse of the iLQG algorithm '...
 % dynamics. This will make iterations more expensive, but
 % final convergence will be much faster (quadratic)
 
-global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu n_params
+global ds v0 n_samples n_states n_controls scale weights wh ws wu n_params
 % note: weights are the sigma point weights
 % w_ are the cost weights
 
@@ -24,13 +24,16 @@ n_controls = 1; % open loop + 3 feedback terms
 n_params = 0;
 
 if nargin == 0
-    wh = 0;
-    ws = 0;
-    wu = 0;
+    wh = 1;
+    ws = 3;
+    wu = 0.1;
     input = DDPInput([wh,ws,wu]);
     input.ut_scale = 20-n_states-n_params;
     input.ut_scale = 15;
     input.horizon = 250;
+%     load 3d_case1
+%     input.guess = sol.u;
+%     clear sol 
 end
 W = input.weights;
 wh = W(1);
@@ -92,6 +95,8 @@ if ~isempty(input.guess) && n_controls > 1
     if size(input.guess,1) == 2
         L = input.guess(2,:)';
         disp('Loaded overcontrol from guess')
+    else
+        L = ones(T,1);
     end
 else
     L = ones(T,1);
@@ -103,10 +108,10 @@ K0 = [L*kd, L*ks, L*kf]';
 
 % Op.lims  = [bounds; [0,1]; [-1,0];[-200, 0]/kf_scale]; % final gain is scaled in dynamics
 if n_controls == 4 %input.optimize_gains
-    Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % don't allow 'bad' sign gains
+    Op.lims  = [[-90,90]*pi/180; [0,1]; [-1,0];[-10, 0]/kf_scale]; % don't allow 'bad' sign gains
     U0 = [u0;K0];
 elseif n_controls == 2
-    Op.lims = [input.bounds; [0,10]]; % Time varying over control gain
+    Op.lims = [[-90,90]*pi/180; [0,10]]; % Time varying over control gain
     U0 = [u0;L'];
 else
     Op.lims  = [-90,90]*pi/180; % bank angle as control 
@@ -121,24 +126,31 @@ Op.parallel = 1;
 % x = forward_pass(X0_vector, u0, K0, T);
 % u = u0;
 % cost = 0;
-
-% lagrange = [0;0];
-lagrange = [0,0];
+lagrange = 0;
+% lagrange = [0,0];
 penalty = 1;
 penalty_factor = 10; % multiply penalty by this value each time 
-u = u0;
-for i = 1:5
+u = U0;
+history.guess = u;
+max_iter = 8;
+for i = 1:max_iter
     disp(['Lagrange/Penalty Update Iteration ', num2str(i)])
 
     DYNCST  = @(X,U,j) entry_dyn_cst(X, U, lagrange, penalty);
     [x, u, ~, ~, ~, cost] = iLQG(DYNCST, X0_vector, u, Op);
     constraint_value = entry_constraints(x(:,end),u)
+    history.constraints(i,:) = constraint_value';
+    history.lagrange(i,:) = lagrange;
+    history.penalty(i) = penalty;
+    history.state{i} = x;
+    history.u{i} = u;
+    
     if max(abs(constraint_value)) < 1e-4  % if the crossrange is under _ km, good enough 
         break
     end
     lagrange = lagrange + penalty*constraint_value'
     penalty = penalty * penalty_factor
-
+    
 end
 
 if n_controls == 4
@@ -160,7 +172,7 @@ cr = -lat*3396.2;
 [psim,psiv] = get_stats(psi * 180/pi); % deg 
 crm = latm*-3396.2;
 
-if nargout
+if 1 || nargout
     sol.u = u;
     sol.v = v;
     % sol.mean = [hm; fm; sm];
@@ -186,6 +198,7 @@ if nargout
     sol.cl = cl;
     sol.cd = cd;
     sol.BC = m/(S*cd);
+    sol.history = history;
 end
 print_stats(x(:,end));
 
@@ -255,12 +268,19 @@ if input.terminal_plots
     inBetween = [(psim-3*psiv.^0.5), fliplr((psim+3*psiv.^0.5))];
     fill(x2, inBetween, 'c');
     hold all
-    plot(v, psi', 'k--','linewidth', 1)
+    plot(v, 180/pi*psi', 'k--','linewidth', 1)
     plot(v, psim, 'm', 'linewidth', lw)
     
     xlabel('Velocity, m/s')
     ylabel('Heading, deg')
     grid on
+    
+    figure
+    grid on
+    semilogy(abs(history.constraints), 'linewidth', lw)
+    legend('Mean Crossrange Error (km)', 'Mean Downrange Error (km)')
+    ylabel('Constraint Value')
+    
 end
 
 function [v,h,lon,lat,fpa,psi,g,L,D] = entry_accels(x)
@@ -322,18 +342,18 @@ else
     if size(U,1)>1
         du = du.*U(2,:); % apply the overcontrol gain
     end
-        du = 0; % open loop
+%         du = 0; % open loop
 end
 
 LoD = L./D;
 LoDr = get_stats(LoD);
 % feedback
 u_cl = smooth_sat(LoDr./LoD.*cos(U(1,:)) + du); % cosh
-s_cl = sign(U(1,:)).*sin(acos(Saturate(u_cl,0,1)));
+s_cl = sign(U(1,:)).*sin(acos(smooth_sat(u_cl)));
 
 % no feedback  - bank angle as control 
-u_cl = cos(U(1,:));
-s_cl = sin(U(1,:));
+% u_cl = cos(U(1,:));
+% s_cl = sin(U(1,:));
 
 % s_cl = U(1,:);
 % u_cl = sqrt(1-s_cl.^2);
@@ -349,13 +369,6 @@ xdot = [hdot/scale(1); thetadot/scale(2); phidot/scale(3); fpadot/scale(4); psid
 
 x = [1/scale(6)+v*0; xdot.*repmat(1./vdot, n_states, 1)]; % really dx/dv
 
-function y = smooth_sat(x)
-K = 20;
-q = 2*x - 1;
-y =  0.5/K * log(cosh(K*(q+1))./cosh(K*(q-1))); % saturates between [-1,1]
-y = 0.5 + 0.5*y; % map back to [0,1]
-
-
 function er = get_error(state)
 er = state - get_stats(state);
 % the mean subtracted from all the points
@@ -367,7 +380,8 @@ cost_scale = 10000;
 
 % states
 [v,h,theta,phi,fpa,psi,g,L,D] = entry_accels(x);
-s = 3396.2e3 * theta; % approximation
+rp = 3396.2e3;
+s = rp * theta; % approximation
 
 % cost function
 % sum of terms:
@@ -381,6 +395,7 @@ u(:,final)  = 0;
 
 % running cost terms
 hdot = v.*sin(fpa);
+phidot = v./(rp+h).*cos(fpa).*sin(psi);
 vdot = -D - g.*sin(fpa);
 hprime = -hdot./vdot * ds;
 hprime = get_stats(hprime); % expected value of running cost
@@ -388,17 +403,19 @@ hprime = get_stats(hprime); % expected value of running cost
 sdot = v.*cos(fpa); % meters/second
 [smean, svar] = get_stats(s); % m
 [hmean, hvar] = get_stats(h); % m
-% [latmean,latvar] = get_stats(phi); % rad
+[latmean,latvar] = get_stats(phi); % rad
 % [psimean,psivar] = get_stats(psi);
 
 vs_dot = 2*get_stats(s.*sdot./vdot) - 2*smean.*get_stats(sdot./vdot);
 vh_dot = 2*get_stats(h.*hdot./vdot) - 2*hmean.*get_stats(hdot./vdot);
+vlat_dot = 2*get_stats(phi.*phidot./vdot) - 2*latmean.*get_stats(phidot./vdot);
 
 %convert variance rates to std rates
 vs_dot = 0.5*vs_dot./((svar + 0.0001).^0.5);
 vh_dot = 0.5*vh_dot./((hvar + 0.0001).^0.5);
+vlat_dot = 0.5*vlat_dot./(latvar + 0.0001).^0.5;
 
-lx = hprime + ws*vs_dot*ds + wh*vh_dot*ds;
+lx = hprime + ws*(vs_dot +vlat_dot)*ds + wh*vh_dot*ds;
 
 % control cost
 lu    = wu*(cos(u(1,:))-0.5).^2 * ds.* v/2500; % this term is for smoothness
@@ -420,8 +437,8 @@ function c = entry_constraints(x,u)
 sm = get_stats(3396.2*lon);
 latm = get_stats(lat);
 % c = sm - 295;  %fixed dr
-% c = 3397*latm;
-c = [latm*3397; sm-295];% final latitude = 0 and fixed DR
+c = 3397*latm;
+% c = [latm*3397; sm-295];% final latitude = 0 and fixed DR
 % c = [lat*3397; 0*s]; % final latitude = 0
 
 function [f,c,fx,fu,fxx,fxu,fuu,cx,cu,cxx,cxu,cuu] = entry_dyn_cst(x,u,lagrange,penalty)

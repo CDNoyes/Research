@@ -1,5 +1,11 @@
-function sol = FixedGainOpt(input)
+function sol = FixedGainOpt(input, optimize)
+% Optimize=False is used to re-estimate the UT statistics with a different
+% value of the UT scaling parameter. Great results have been shown with
+% alpha [0,5,10] compared to the MC results 
 
+if nargin < 2
+    optimize = true;
+end
 global ds v0 full_DDP n_samples n_states n_controls scale weights wh ws wu n_params
 n_states = 3;
 n_controls = 1;
@@ -10,10 +16,11 @@ if nargin == 0
     ws = 1;
     wu = 0.3;
     input = DDPInput([wh,ws,wu]);
-    input.ut_scale = 16;
+    input.ut_scale = [5,10,15];
+    %     input.ut_scale = 15;
     input.horizon = 250;
-    load solutions_cl_ddp_max_guess
-    input.guess = sols{6}.u;
+    %     load solutions_cl_ddp_max_guess
+    %     input.guess = sols{6}.u;
 end
 W = input.weights;
 wh = W(1);
@@ -39,15 +46,25 @@ ds      = dV/T;
 % Initial States
 x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
 
-% Note that horizon must be set lower because of the increased state
-% dimension
-[X0, weights] = UnscentedTransform(x0(2:end), 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2, input.ut_scale);
-n_samples = length(weights);
-X0 = [zeros(n_samples,1), X0'];
-X0_vector = X0(n_samples:end)';
+weight_vector = [];
+X0_matrix = [];
+nalpha = length(input.ut_scale);
+P0 = 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2;
 
-fprintf(['Samples = ',num2str(n_samples),'\nTotal State Dimension = ',num2str(length(X0_vector)),'\n'])
 
+for i = 1:nalpha
+    [X0, weights] = UnscentedTransform(x0(2:end), P0, input.ut_scale(i));
+    n_samples = length(weights);
+    X0 = X0';
+    % X0_vector = [X0_vector;X0(1:end)'];
+    X0_matrix = [X0_matrix; X0];
+    weight_vector = [weight_vector;weights];
+end
+X0_vector = [0;X0_matrix(:)];
+weights = weight_vector/nalpha;
+n_samples = n_samples*nalpha;
+fprintf(['Samples = ',num2str(n_samples*nalpha),'\nTotal State Dimension = ',num2str(length(X0_vector)),'\n'])
+% weights = [1, zeros(1,n_samples-1)]';
 % Initial Control
 if isempty(input.guess)
     % u0      = ones(1,floor(T))*0.4;
@@ -65,16 +82,22 @@ ks = input.gains(2);  % less lift up when too close
 kf_scale = 200; % dont touch this
 kf = input.gains(3)/kf_scale;% less lift up when too shallow
 
+% K0 = [kd, ks, kf, 0, 0];
 K0 = [kd, ks, kf];
 % K0 = zeros(3,1);
-Kopt = optimize_gain(X0_vector, u0, K0, W);
+if optimize
+%     K0 = [0.5   -0.0781   -0.2288/kf_scale   -0.1714    3.2735];
+    Kopt = optimize_gain(X0_vector, u0, K0, W);
+else
+    Kopt = K0;
+end
 x = forward_pass(X0_vector, u0, Kopt, T+1);
 u = u0;
-Kopt(3) = Kopt(3)*kf_scale; % lol dont do this till after the forward pass
+Kopt(3) = Kopt(3)*kf_scale % lol dont do this till after the forward pass
 input.gains = Kopt;
 
-% Compute stats 
-[h,v,fpa,s,~,L,D] = entry_accels(x);
+% Compute stats
+[h,v,fpa,s,~,L,D,q] = entry_accels(x);
 v=v';
 s = s/1000;
 [hm, hv] = get_stats(h);
@@ -82,7 +105,13 @@ s = s/1000;
 [fm, fv] = get_stats(fpa);
 [Dm, Dv] = get_stats(D);
 [Lm, Lv] = get_stats(L);
-
+% if optimize
+%     M1 = (1 + q/1000*Kopt(4));
+%     M2 = (1 + q/1000*Kopt(5));
+%     U = [u; Kopt(1)*M1; Kopt(2)*(1+0*M1); Kopt(3)*M2];
+% else
+%     U = u;
+% end
 sol.u = u;
 sol.v = v;
 sol.mean = [hm; fm; sm];
@@ -112,50 +141,56 @@ print_stats(x(:,end));
 % Plots
 lw = 2;
 if input.terminal_plots
-figure
-x2 = [v', fliplr(v')];
-inBetween = [(sm-3*sv.^0.5)/1000, fliplr((sm+3*sv.^0.5)/1000)];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, s'/1000, 'k--','linewidth', 1)
-plot(v, sm/1000, 'm', 'linewidth', lw)
-
-xlabel('Velocity, m/s')
-ylabel('Downrange, km')
-grid on
-
-figure
-x2 = [v', fliplr(v')];
-inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, h'/1000, 'k--','linewidth', 1)
-plot(v, hm/1000, 'm', 'linewidth', lw)
-
-xlabel('Velocity m/s')
-ylabel('Altitude km')
-grid on
-
-figure
-inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
-fill(x2, inBetween, 'c');
-hold all
-plot(v, D', 'k--','linewidth', 1)
-plot(v, Dm, 'm', 'linewidth', lw)
-xlabel('Velocity, m/s')
-ylabel('Drag, m/s^2')
-grid on
-
-figure
-plot(v(1:end-1), u(1,1:end-1), 'k', 'linewidth', lw)
-hold all
-
-xlabel('Velocity, m/s')
-ylabel('Controls')
-grid on
+    figure
+    x2 = [v', fliplr(v')];
+    inBetween = [(sm-3*sv.^0.5), fliplr((sm+3*sv.^0.5))];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, sm, 'm', 'linewidth', lw)
+    plot(v, s', 'k--','linewidth', 1)
+    set ( gca, 'xdir', 'reverse' )
+    xlabel('Velocity, m/s')
+    ylabel('Downrange, km')
+    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
+    grid on
+    
+    figure
+    x2 = [v', fliplr(v')];
+    inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, hm/1000, 'm', 'linewidth', lw)
+    plot(v, h'/1000, 'k--','linewidth', 1)
+    set ( gca, 'xdir', 'reverse' )
+    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
+    
+    xlabel('Velocity m/s')
+    ylabel('Altitude km')
+    grid on
+    
+    figure
+    inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
+    fill(x2, inBetween, 'c');
+    hold all
+    plot(v, Dm, 'm', 'linewidth', lw)
+    plot(v, D', 'k--','linewidth', 1)
+    xlabel('Velocity, m/s')
+    ylabel('Drag, m/s^2')
+    grid on
+    set ( gca, 'xdir', 'reverse' )
+    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
+    
+    figure
+    plot(v(2:end-1), u(1,1:end-1), 'k', 'linewidth', lw)
+    hold all
+    set ( gca, 'xdir', 'reverse' )
+    
+    xlabel('Velocity, m/s')
+    ylabel('Controls')
+    grid on
 end
 
-function [h,v,fpa,s,g,L,D] = entry_accels(x)
+function [h,v,fpa,s,g,L,D,q] = entry_accels(x)
 % constants
 [m,S,cl,cd] = aero_const();
 
@@ -167,9 +202,16 @@ mu = 4.2830e13;
 
 % Accels
 rho = frho.*0.0158.*exp(-h./9354.5);
+q = 0.5*rho.*v.^2;
 f = 0.5*rho.*v.^2*S/m;
-D = f.*cd.*fcd;
-L = f.*cl.*fcl;
+if 1  % Mach-varying aero
+    LoD = LoDFun(real(v)).*fcl;
+    D = f.*cd.*fcd;
+    L = LoD.*D;
+else
+    D = f.*cd.*fcd;
+    L = f.*cl.*fcl;
+end
 g = mu./(rp+h).^2;
 
 function x = entry_dynamics(x, U, K)
@@ -197,18 +239,22 @@ global scale n_states n_params
 rp = 3396.2e3;
 
 % states + current accelerations
-[h,v,fpa,s,g,L,D] = entry_accels(x);
-
-% u = U(1,:);
-% K = U(2:4,:);
+[h,v,fpa,s,g,L,D,q] = entry_accels(x);
 
 % feedback terms
 ef = get_error(fpa);
 es = get_error(s/1000);
 eD = get_error(D);
 
-du = K(1)*eD + K(2)*es + K(3)*ef*200; % [0.0725, -0.025, -4]
+% mult = (1 + q/1000*K(4)); % gains can be constants or scheduled on dynamic pressure 
+% mult2 = (1 + q/1000*K(5));
 
+% mult = (1 + v./1000*K(4)); % gains can be constants or scheduled on dynamic pressure 
+% mult2 = (1 + v./100*K(5));
+
+mult = 1; mult2 = 1;
+du = K(1)*eD.*mult + K(2)*es + K(3)*ef*200.*mult2; % [0.0725, -0.025, -4]
+% du = du.*mult;
 
 LoD = L./D;
 LoDr = get_stats(LoD);
@@ -224,13 +270,6 @@ xdot = [hdot/scale(1); fpadot/scale(3); sdot/scale(4)];            % change in s
 % dt = -ds./vdot;   % just for estimate
 % x  = x + [ds/scale(2)+v*0; xdot.*repmat(dt, n_states, 1); 0*x(2+n_states*size(dt,1):end, :)];  % new state
 x = [1/scale(2)+v*0; xdot.*repmat(-1./vdot, n_states, 1); zeros(size(L).*[n_params,1])]; % really dx/dv
-
-function y = smooth_sat(x)
-K = 20;
-q = 2*x - 1;
-y =  0.5/K * log(cosh(K*(q+1))./cosh(K*(q-1))); % saturates between [-1,1]
-y = 0.5 + 0.5*y; % map back to [0,1]
-
 
 function er = get_error(state)
 er = state - get_stats(state);

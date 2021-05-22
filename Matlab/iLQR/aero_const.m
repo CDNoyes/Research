@@ -18,15 +18,23 @@ function [m, S, cl, cd] = aero_const()
 % cl = 0.3879;
 % cd = 1.3824;
 
-% Old heavy vehicle used these:
-% L/D ~ 0.29
-cl = 0.3986;
-cd = 1.3736;
-
-m = 5000;
-BC = 225;
-
-
-S = m/BC/cd; % this keeps both mass and BC constant as cd changes 
+if 0
+    % Old heavy vehicle used these:
+    % L/D ~ 0.29
+    cl = 0.3986;
+    cd = 1.3736;
+    
+    m = 5000;
+    % BC = 225;
+    BC = 185;
+    S = m/BC/cd; % this keeps both mass and BC constant as cd changes
+else
+    % MSL-class examples use these
+    cl = 0.351;
+    cd = 1.46;
+    S = 15.8;
+    m = 2804;
+    BC = m/(S*cd);
+end
 
 % [cd,cl] = srl_constant_aero(M, alpha)

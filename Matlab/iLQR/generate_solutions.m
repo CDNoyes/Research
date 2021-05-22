@@ -238,7 +238,7 @@ end
 %% Sweep over the weights
 
 Ws = 0:1:3;
-Wh = 0:1:10;
+Wh = 0:1:3;
 
 sols = {};
 for j = 1:length(Ws)
@@ -248,10 +248,11 @@ for j = 1:length(Ws)
         wh = Wh(i);
         ws = Ws(j);
         inp = DDPInput([wh, ws, 0.1]);
+        inp.gains = [0,0,0]; % Open-loop optimization 
         inp.terminal_plots = false;
         inp.running_plots = false;
         inp.horizon = 250;
-        inp.ut_scale = 15;
+        inp.ut_scale = 5;
 %         if ~isempty(sols)
 %             inp.guess = sols{end}.u; % Use the robust mean solution as guess
 %         end
@@ -267,9 +268,8 @@ for j = 1:length(Ws)
     end
 end
 
-
 % save('solutions_cl_ddp.mat','sols') % just in case, allows for reloading quickly
-save('msl_weight_sweep.mat','sols') % just in case, allows for reloading quickly
+save('msl_weight_sweep_open_loop.mat','sols') % just in case, allows for reloading quickly
 %%
 for i = 1:length(sols)
     sol = sols{i};
