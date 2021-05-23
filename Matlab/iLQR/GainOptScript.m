@@ -29,6 +29,7 @@ inp.full_hessian = false;
 sol_partial = entry_stochastic_gains_params(inp);
 
 inp.ddp = false;
+inp.max_iterations = 250;
 sol_lqr = entry_stochastic_gains_params(inp);
 
 sols = {sol_ddp, sol_partial, sol_lqr};
