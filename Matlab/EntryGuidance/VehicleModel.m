@@ -9,7 +9,7 @@ function VM = VehicleModel(mass)
 VM.area = 15.8; % reference area, m^2
 % VM.mass = 2804; % mass, kg MSL
 if nargin == 0
-    VM.mass = 4200; %  vehicle for SRL
+    VM.mass = 5000; %  vehicle for SRL
 
 else
     VM.mass = mass;

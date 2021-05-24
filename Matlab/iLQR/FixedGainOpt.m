@@ -96,8 +96,8 @@ u = u0;
 Kopt(3) = Kopt(3)*kf_scale % lol dont do this till after the forward pass
 input.gains = Kopt;
 
-% Compute stats
-[h,v,fpa,s,~,L,D,q] = entry_accels(x);
+% Compute stats and setup the output structure
+[h,v,fpa,s,~,L,D] = entry_accels(x);
 v=v';
 s = s/1000;
 [hm, hv] = get_stats(h);
@@ -105,13 +105,7 @@ s = s/1000;
 [fm, fv] = get_stats(fpa);
 [Dm, Dv] = get_stats(D);
 [Lm, Lv] = get_stats(L);
-% if optimize
-%     M1 = (1 + q/1000*Kopt(4));
-%     M2 = (1 + q/1000*Kopt(5));
-%     U = [u; Kopt(1)*M1; Kopt(2)*(1+0*M1); Kopt(3)*M2];
-% else
-%     U = u;
-% end
+
 sol.u = u;
 sol.v = v;
 sol.mean = [hm; fm; sm];
@@ -129,6 +123,7 @@ sol.Lm = Lm;
 sol.Dm = Dm;
 sol.Dv = Dv;
 sol.Lv = Lv;
+
 [m,S,cl,cd] = aero_const();
 sol.mass = m;
 sol.area = S;
@@ -136,58 +131,10 @@ sol.cl = cl;
 sol.cd = cd;
 sol.BC = m/(S*cd);
 
-print_stats(x(:,end));
 
-% Plots
-lw = 2;
+print_stats(x(:,end));
 if input.terminal_plots
-    figure
-    x2 = [v', fliplr(v')];
-    inBetween = [(sm-3*sv.^0.5), fliplr((sm+3*sv.^0.5))];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, sm, 'm', 'linewidth', lw)
-    plot(v, s', 'k--','linewidth', 1)
-    set ( gca, 'xdir', 'reverse' )
-    xlabel('Velocity, m/s')
-    ylabel('Downrange, km')
-    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
-    grid on
-    
-    figure
-    x2 = [v', fliplr(v')];
-    inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, hm/1000, 'm', 'linewidth', lw)
-    plot(v, h'/1000, 'k--','linewidth', 1)
-    set ( gca, 'xdir', 'reverse' )
-    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
-    
-    xlabel('Velocity m/s')
-    ylabel('Altitude km')
-    grid on
-    
-    figure
-    inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, Dm, 'm', 'linewidth', lw)
-    plot(v, D', 'k--','linewidth', 1)
-    xlabel('Velocity, m/s')
-    ylabel('Drag, m/s^2')
-    grid on
-    set ( gca, 'xdir', 'reverse' )
-    legend('3\sigma region','Mean Trajectory', 'Sigma Trajectory','location','best')
-    
-    figure
-    plot(v(2:end-1), u(1,1:end-1), 'k', 'linewidth', lw)
-    hold all
-    set ( gca, 'xdir', 'reverse' )
-    
-    xlabel('Velocity, m/s')
-    ylabel('Controls')
-    grid on
+   SolutionPlots(sol) 
 end
 
 function [h,v,fpa,s,g,L,D,q] = entry_accels(x)

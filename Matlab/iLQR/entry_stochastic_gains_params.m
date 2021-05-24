@@ -2,6 +2,11 @@ function sol = entry_stochastic_gains_params(input)
 % A demo of iLQG/DDP with stochastic entry dynamics and joint gain
 % optimization
 
+% How to configure between heavy vehicle and MSL vehicle:
+% Set the appropriate gains in DDPInput
+% Set the flag in aero_const to set mass, area, BC, etc
+% Set the scale value in LoDFun. 
+
 fprintf(['\nUse of the iLQG algorithm '...
     'with entry dynamics, velocity loss as independent variable.\n'])
 
@@ -55,7 +60,7 @@ ds      = dV/T;
 % Initial States
 x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
 
-if 0 %State + Param Uncertainty
+if 1 %State + Param Uncertainty
     % Note that horizon must be set lower because of the increased state
     % dimension
     [X0, weights] = UnscentedTransform(x0(2:end), 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2, input.ut_scale);

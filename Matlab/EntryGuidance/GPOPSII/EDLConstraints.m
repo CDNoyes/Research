@@ -8,7 +8,17 @@ rp      = input.auxdata.planet.radiusEquatorial;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Entry Phase 
 x = input.phase(1).state;
+
+if size(x, 2) == 7
 dSigma = input.phase(1).control;
+Sigma = x(:,7);
+cosbank = cos(Sigma);
+else
+%    Sigma = input.phase(1).control;
+cosbank = input.phase(1).control;
+   dSigma = [];
+   dpsi = zeros(size(cosbank));
+end
 
 r = x(:,1);
 % theta = x(:,2);
@@ -16,7 +26,6 @@ phi = x(:,3);
 v = x(:,4);
 gamma = x(:,5);
 psi = x(:,6);
-Sigma = x(:,7);
 
 
 g = mu./(r.^2);
@@ -33,9 +42,10 @@ dr = v.*sin(gamma);
 dtheta = v.*cos(gamma).*cos(psi)./(r.*cos(phi));
 dphi = v.*cos(gamma).*sin(psi)./r;
 dv = -drag - g.*sin(gamma);
-dgamma = lift.*cos(Sigma)./v - (g./v - v./r).*cos(gamma);
-dpsi = lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
-
+dgamma = lift.*cosbank./v - (g./v - v./r).*cos(gamma);
+if ~exist('dpsi', 'var')
+    dpsi = lift.*sin(Sigma)./(v.*cos(gamma)) - (v./r).*cos(gamma).*cos(psi).*tan(phi);
+end
 output(1).dynamics = [dr dtheta dphi dv dgamma dpsi dSigma];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

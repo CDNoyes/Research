@@ -21,6 +21,7 @@ input.closed_loop = true;
 % input.gains = [0.0725, -0.025, -4]; % D S fpa for the heavy vehicle
 input.gains = [0.1305   -0.0389   -2.5205 ]; % for MSL-like vehicle 
 input.n_controls = 1;
+
 % Vehicle Info
 input.bounds = [0, 1]; % feed forward control limits 
 input.lod = 0.24; % Nominal LoD at mach=24, scales the MSL profile 

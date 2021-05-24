@@ -1,3 +1,14 @@
+%% Estimate the open loop dispersions for the heavy vehicle, guess traj
+inp = DDPInput([0,0,0]);
+inp.ut_scale = [0, 5, 10];
+inp.ut_scale = 15;
+inp.horizon = 250;
+inp.gains = [0,0,0];
+inp.terminal_plots = false;
+sol = FixedGainOpt(inp, 0);
+
+SolutionPlots(sol,'HeavyOpenLoop')
+
 %% Call the Fixed GainOpt function with K=0 and K=input.gains
 % sweep over alpha maybe? need to save one of each for use in python
 
@@ -18,7 +29,7 @@ sol = FixedGainOpt(inp);
 
 % save('UTExample_OpenLoop', 'sol')
 %% Gather convergence data for three solutions, param unc only
-inp = DDPInput([1,1,0.2]);
+inp = DDPInput([1,1,0.75]);
 inp.ddp = true;
 inp.full_hessian = true;
 inp.ut_scale = 15;
@@ -33,27 +44,26 @@ inp.max_iterations = 250;
 sol_lqr = entry_stochastic_gains_params(inp);
 
 sols = {sol_ddp, sol_partial, sol_lqr};
-save('ConvergenceExample', 'sols');
-%%
-load ConvergenceExample
-fields = fieldnames(sols{1}.trace);
-for j = 2:length(fields)
-    for i = 1:3
-        trace = sols{i}.trace;
-        iter = 1:trace(end).iter;
-        y = [];
-        for k = iter
-           y(k) =  getfield(sols{i}.trace(k), fields{j});
-        end
-        figure(j)
-        hold all
-        plot(iter, y, 'linewidth', 2)
-        xlabel('Iteration')
-        ylabel(fields{j})
-    end
-    grid on
-    legend('DDP','DDP-ControlHessian','iLQR','location','best')
-end
+save('ConvergenceExampleSmoother', 'sols');
+
+%% Convergence from a different guess?
+inp = DDPInput([1,1,0.75]);
+inp.ddp = true;
+inp.full_hessian = true;
+inp.ut_scale = 15;
+inp.guess = 0.5 + zeros(1,250);
+inp.horizon = 250;
+
+inp.full_hessian = false;
+sol_half = entry_stochastic_gains_params(inp);
+
+inp.guess = ones(1,250);
+sol_full = entry_stochastic_gains_params(inp);
+
+inp.guess = linspace(1,0,250);
+sol_rampdown = entry_stochastic_gains_params(inp);
+sols = {sol_half, sol_full, sol_rampdown};
+save('ConvergenceGuessExample', 'sols');
 %%
 inp = DDPInput([1,1,0.2]);
 

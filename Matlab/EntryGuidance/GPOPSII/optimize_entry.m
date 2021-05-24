@@ -86,7 +86,7 @@ end
 
 x0l = x0;
 x0u = x0;
-if 1    % This allows the optimizer to choose the initial FPA
+if 0    % This allows the optimizer to choose the initial FPA
     x0l(5) = -25*dtr;
     x0u(5) = -10*dtr;
 end

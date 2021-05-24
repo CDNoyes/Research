@@ -1,16 +1,19 @@
 function Sol = optimize_entry_experimental(c)
 %%% Longitudinal dynamics only, but with experimental stuff 
 
+if nargin == 0
+    c = 0;
+end
 
 dtr = pi/180;
 
 % System Models:
 mars = Mars();
-vm = VehicleModel(7200);
+vm = VehicleModel(5000);
 
 
 % Target info:
-DR = 600e3;
+DR = 700e3;
 CR = 0;
 target.DR = DR;
 target.CR = CR;
@@ -20,6 +23,7 @@ target.CR = CR;
 % Initial states:
 %[altitude range_to_go velocity fpa]
 x0 = [127.8e3; DR; 5505; -14.5*dtr]';
+% x0 = [39.4497e3, DR, 5461.4, -10.604*dtr]; % the DDP initial conditions 
 
 auxdata.target = target;
 auxdata.planet = mars;
@@ -32,7 +36,7 @@ auxdata.c = c;
 
 % Bounds
 t0 = 0;
-tfl = 200;
+tfl = 10;
 tfu = 500;
 
 bounds.phase.initialtime.lower = t0;
@@ -52,7 +56,7 @@ ub = [x0(1) + 1
     10*dtr % FPA constraint degrees
     ]';
 
-vel_max = 750;
+vel_max = 480;
 if 0 % Fixed  downrange
     xfl = [lb(1), 0, lb(3), lb(4)];
     xfu = [ub(1), 0, vel_max, ub(4)];
@@ -81,7 +85,7 @@ bank_limit = 90*dtr;
 u_limit = cos(bank_limit);
 bounds.phase.control.lower = u_limit;
 bounds.phase.control.upper = 1;
-bounds.phase.integral.lower = 0;
+bounds.phase.integral.lower = -x0(1)/1000;
 bounds.phase.integral.upper = 5000;
 
 
@@ -109,7 +113,7 @@ setup.derivatives.derivativelevel = 'first';
 setup.scales.method = 'automatic-guessUpdate';
 setup.method = 'RPM-Differentiation';
 setup.mesh.method = 'hp-PattersonRao'; % 'hp-PattersonRao'
-setup.mesh.tolerance = 1e-4; % default 1e-3
+setup.mesh.tolerance = 1e-5; % default 1e-3
 % setup.mesh.colpointsmin = 3;
 % setup.mesh.colpointsmax = 10;
 setup.mesh.maxiterations = 20;
@@ -119,17 +123,27 @@ Sol = sol.result.solution.phase;
 
 x = Sol.state';
 Lon = cumtrapz(Sol.time, x(3,:).*cos(x(4,:))./(3396.2e3 + x(1,:)));
+
 X = [Sol.state(:,1)+3396.2e3, Lon', Sol.state(:,2)*0, Sol.state(:,3:4), Sol.state(:,1)*0];
 
 if Sol.state(1,2) ~= DR
     target.DR = Sol.state(1,2);
 end
 
-traj = TrajectorySummary(Sol.time, X, acos(Sol.control),target.DR/1000,target.CR);
+traj = TrajectorySummary(Sol.time, X, acos(Sol.control), target.DR/1000, target.CR);
 EntryPlots(traj);
+
 figure
 plot(x(2,1)-x(2,:), Sol.control)
 xlabel('DR')
+disp(['Traj Length = ',num2str(target.DR/1000), 'km'])
+
+
+[~,k] = max(Sol.state(:,3));
+k = k + 1;
+x0_DDP = interp1(Sol.state(k:end,3), Sol.state(k:end,:), 5525);
+x0_DDP = x0_DDP./[1000, 1000, 1, pi/180]
+[Sol.state(k,1)/1000, Sol.state(k,3), Sol.state(k,4)*180/pi]
 
 end
 
@@ -152,20 +166,23 @@ gamma = x(:,4);
 
 g = mu./(r.^2);
 [rho,a] = MarsAtmosphericDensity(h);
-M = v./a;
-[C_D, C_L] = input.auxdata.vehicle.aerodynamics(M);
+% M = v./a;
+% [C_D, C_L] = input.auxdata.vehicle.aerodynamics(M);
+C_D  = 1.408;      
+C_L  = 0.357;    
 q = 0.5*rho.*v.^2*S/m;
 drag = q.*C_D;
 lift = q.*C_L;
 
 
 dr = v.*sin(gamma);
-ds = -v.*cos(gamma);
+ds = -v.*cos(gamma);%.*rp./r;
 dv = -drag - g.*sin(gamma);
-dgamma = lift.*u.^2./v - (g./v - v./r).*cos(gamma);
+dgamma = lift.*u./v - (g./v - v./r).*cos(gamma);
 output.dynamics = [dr ds dv dgamma];
 % output.integrand = zeros(size(r));
 output.integrand = u.^2;
+% output.integrand = dr/1000;
 
 
 
@@ -176,5 +193,7 @@ xf = input.phase.finalstate;
 % tf = input.phase.finaltime;
 
 % output.objective = (xf(1)-8000)^2 + input.auxdata.c*input.phase.integral;
-output.objective = (7.5-xf(1)/1000)^2 + 1*(xf(3)-550)^2 + 0.1*input.phase.integral;
+% output.objective = (7.5-xf(1)/1000)^2 + 1*(xf(3)-550)^2 + 0.01*input.phase.integral;
+output.objective = -xf(1) + input.auxdata.c*input.phase.integral;
+% output.objective =  -input.phase.integral + 100*(xf(3)-550)^2;
 end

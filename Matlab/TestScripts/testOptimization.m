@@ -21,3 +21,13 @@ t_elapsed(i) = toc;
 end
 
 semilogy(t_elapsed)
+
+%%
+n = 3;
+g = [-4.11437246, -4.97252207, -2.29286949]';
+H = eye(n);
+x0 = [6;6;6];
+xu = 5*ones(n,1);
+xl = -3*ones(n,1);
+[x,f] = ProjectedNewtonQP(H,g,x0,xl,xu,1e-3);
+x

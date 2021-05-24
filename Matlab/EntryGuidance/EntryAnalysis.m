@@ -31,7 +31,7 @@ if nargin >= 4 && ~isempty([dr,cr])
     if d > 1
         disp(['Total range error:   ',num2str(d), ' km'])
     else
-        disp(['Total range error:   ',num2str(d*1000), ' m'])
+        disp(['Total range error:   ',num2str(d*1000), ' meters'])
     end
 else
     d = [];

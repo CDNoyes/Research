@@ -62,6 +62,7 @@ xlabel('DownRange (km)',textSpecs{:})
 ylabel('Altitude (km)',textSpecs{:})
 title(['Final altitude: ',num2str(hkm(end)), ' km'],textSpecs{:})
 
+if any(abs(ts.DR)> 1)
 %DR v CR
 n = n+1;
 figure(n)
@@ -90,7 +91,7 @@ grid on
 box on
 legend('Trajectory','Peak Dynamic Pressure','Max L/D','Location','best')
 set(gcf,'name','Downrange vs Crossrange (Equal Scale)', figSpecs{:})
-
+end
 %Lat/Lon
 n = n+1;
 figure(n)
@@ -112,6 +113,7 @@ figure(n)
 subplot 211
 plot(t,x(:,5)/dtr, lineSpecs{:})
 grid on
+hold on
 axis([0,max(t),min(x(:,5)/dtr)*(1-sign(min(x(:,5)))*.1),max(x(:,5)/dtr)*(1+sign(max(x(:,5)))*.1)])
 xlabel('Time (s)',textSpecs{:})
 ylabel('FPA (deg)',textSpecs{:})
@@ -121,10 +123,12 @@ axis([0,1,min(x(:,5)/dtr)*(1-sign(min(x(:,5)))*.1),max(x(:,5)/dtr)*(1+sign(max(x
 xlabel('Normalized Energy',textSpecs{:})
 ylabel('FPA (deg)',textSpecs{:})
 grid on
+hold on
 box on
 set(gcf,'name','FPA', figSpecs{:})
 
 %Heading angle
+if x(end,6) ~= 0
 n = n+1;
 figure(n)
 subplot 211
@@ -141,13 +145,14 @@ ylabel('Heading (deg)',textSpecs{:})
 grid on
 box on
 set(gcf,'name','Heading', figSpecs{:})
-
+end
 %CONTROL
 n = n+1;
 figure(n)
 subplot 311
 plot(t,sig/dtr, lineSpecs{:})
 grid on
+hold on
 axis([0,max(t),-180,180])
 xlabel('Time (s)',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
@@ -157,14 +162,28 @@ axis([0,1,-180,180])
 xlabel('Normalized Energy',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 grid on
+hold on
 box on
 subplot 313
 plot(x(:,4),sig/dtr, lineSpecs{:})
-axis([x(end,4)-100,x(1,4)+500,-180,180])
+axis([x(end,4)-10,x(1,4)+50,-180,180])
 set(gca, 'XDir','reverse')
+hold on
+grid on
 xlabel('Velocity',textSpecs{:})
 ylabel('Bank Angle (deg)',textSpecs{:})
 set(gcf,'name','Bank Profile', figSpecs{:})
+
+% Drag
+n=n+1;
+figure(n)
+grid on
+box on
+set(gcf,'name','Drag vs Velocity', figSpecs{:})
+hold on
+plot(x(:,4), ts.D, lineSpecs{:})
+xlabel('Velocity (m/s)',textSpecs{:})
+ylabel('Drag (m/s^2)',textSpecs{:})
 
 % MACH
 n = n+1;
@@ -226,7 +245,7 @@ set(gcf,'name','g-load profile', figSpecs{:})
 % hold on
 % plot(ts.DR, ts.D, lineSpecs{:})
 % xlabel('DownRange (km)',textSpecs{:})
-% ylabel('Drag (m/s)',textSpecs{:})
+% ylabel('Drag (m/s^2)',textSpecs{:})
 
 if isfield(ts,'observer') && ts.observer
     n = n+1;

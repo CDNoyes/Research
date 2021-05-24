@@ -21,7 +21,11 @@ LoD = [0.2375
 0.33886394
 0.33886];
 
-scale = 0.29/0.24;
-scale = 1; % for MSL-class 
+if 1 % LoD that varies with V
+    % scale = 0.29/0.24;
+    scale = 1; % for MSL-class 
+    LD = interp1(v, LoD*scale, V, 'linear');
 
-LD = interp1(v, LoD*scale, V, 'linear');
+else % Constant LoD
+    LD = 0.29 + 0*V; % returns the right size 
+end

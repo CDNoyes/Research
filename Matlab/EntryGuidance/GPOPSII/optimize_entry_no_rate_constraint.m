@@ -1,14 +1,19 @@
 function traj = optimize_entry_no_rate_constraint(DR, CR)
-
+if nargin == 0
+    DR = 350;
+    CR = 0;
+end
 dtr = pi/180;
 
 % System Models:
 mars = Mars();
-vm = VehicleModel();
+vm = VehicleModel(5000);
+
 
 % Initial states:
 %[radius long lat velocity fpa heading]
-x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.5*dtr; 0*dtr]';
+% x0 = [3540e3; 0*dtr; 0*dtr; 5505; -14.5*dtr; 0*dtr]';
+x0 = [54.5e3 + 3396.2e3; 0*dtr; 0*dtr; 5525; -11.5*dtr; 0*dtr]';
 
 % Target info:
 target.DR = DR;
@@ -27,7 +32,7 @@ auxdata.delta.CD = 0;
 
 % Bounds
 t0 = 0;
-tfl = 200;
+tfl = 100;
 tfu = 500;
 
 bounds.phase.initialtime.lower = t0;
@@ -53,8 +58,8 @@ ub = [x0(1) + 20e3
 
 heading_max = 30. * dtr;
 fpa_min = -40 * dtr;
-vel_max = 550;
-if 0 % Fixed lat/lon
+vel_max = 460;
+if 1 % Fixed lat/lon
     xfl = [lb(1), target.lon, target.lat, lb(4), fpa_min, -heading_max];
     xfu = [ub(1), target.lon, target.lat, vel_max, ub(5), heading_max];
     
@@ -62,7 +67,7 @@ elseif 0 % Fixed lon i.e. downrange
     xfl = [lb(1), target.lon, lb(3), lb(4), lb(5), lb(6)];
     xfu = [ub(1), target.lon, ub(3), vel_max, ub(5), ub(6)];
     
-elseif 1 % Fixed lat i.e. crossrange
+elseif 0 % Fixed lat i.e. crossrange
     xfl = [lb(1:2), target.lat, lb(4), lb(5), lb(6)];
     xfu = [ub(1:2), target.lat, vel_max, ub(5), ub(6)];
     
