@@ -1,3 +1,35 @@
+inp = DDPInput([1,1,0.2]);
+inp.horizon = 250;
+% inp.guess = ones(1,inp.horizon)*0.8;
+% inp.guess(linspace(5505,460,inp.horizon) > 3000) = 0.2;
+
+% Optimize gains for the new initial state/cov
+inp.ut_scale = [0, 5, 10];
+inp.terminal_plots = true;
+sol_gains = FixedGainOpt(inp);
+
+
+inp.ut_scale = 15;
+inp.gains = sol_gains.input.gains;
+sol = entry_stochastic_gains_params(inp);
+
+inp.ut_scale = [0, 5, 10];
+inp.terminal_plots = false;
+inp.guess = sol.u;
+sol_est = FixedGainOpt(inp, false);
+sol_opt = FixedGainOpt(inp);
+sols = {sol, sol_est, sol_opt};
+save('MSLDetailedExample.mat', 'sols')
+
+%% Use this block to re-optimize a solution in 'sol'
+inp = DDPInput([1,1,0.2]);
+inp.ut_scale = [0, 5, 10];
+inp.horizon = 250;
+inp.terminal_plots = false;
+inp.guess = sol.u;
+sol_opt = FixedGainOpt(inp);
+
+
 %% Estimate the open loop dispersions for the heavy vehicle, guess traj
 inp = DDPInput([0,0,0]);
 inp.ut_scale = [0, 5, 10];
@@ -7,7 +39,7 @@ inp.gains = [0,0,0];
 inp.terminal_plots = false;
 sol = FixedGainOpt(inp, 0);
 
-SolutionPlots(sol,'HeavyOpenLoop')
+% SolutionPlots(sol,'HeavyOpenLoop')
 
 %% Call the Fixed GainOpt function with K=0 and K=input.gains
 % sweep over alpha maybe? need to save one of each for use in python

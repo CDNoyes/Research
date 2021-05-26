@@ -44,13 +44,14 @@ T       = input.horizon;
 ds      = dV/T;
 
 % Initial States
-x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
+% x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
+x0 = [input.x0; ones(n_params,1)]./[1;hscale;fpascale;1;1;1;1];
 
 weight_vector = [];
 X0_matrix = [];
 nalpha = length(input.ut_scale);
-P0 = 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2;
-
+Px0 = diag(input.P0)./([hscale; fpascale; rangescale].^2);
+P0 = diag([Px0', [5/100, 5/100, 7/100].^2]);
 
 for i = 1:nalpha
     [X0, weights] = UnscentedTransform(x0(2:end), P0, input.ut_scale(i));

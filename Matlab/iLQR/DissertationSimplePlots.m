@@ -1,7 +1,7 @@
 %% Convergence Example
 close all; clear; clc;
 
-load ConvergenceExampleSmoother
+load ConvergenceExample
 for i = 1:3
     [hm, fm, sm, hs, fs, ss] = get_stats(sols{i});
     stats(i,:) = [hm, fm, sm, hs, fs, ss];
@@ -43,7 +43,7 @@ for j = 2:length(fields)
     grid on
     legend('DDP','DDP-ControlHessian','iLQR','location','northeast')
     %     saveas(gcf, ['C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Convergence\',fields{j},'.png']) %laptop
-    saveas(gcf, ['E:\Documents\EDL\Documents\Dissertation\Images\Convergence\',fields{j},'.png']) %pc
+%     saveas(gcf, ['E:\Documents\EDL\Documents\Dissertation\Images\Convergence\',fields{j},'.png']) %pc
     
 end
 %% Control Profiles
@@ -51,16 +51,16 @@ f=figure;
 set(f, 'Position',[100,100,500,300])
 for i=1:3
     hold all
-    plot(sols{i}.v(2:end), smooth(sols{i}.u,20), 'linewidth', 2)
+    plot(sols{i}.v(2:end), movmean(sols{i}.u,20), 'linewidth', 2)
 end
 grid on
-legend('DDP','DDP-ControlHessian','iLQR','location','northwest')
+legend('DDP','DDP-ControlHessian','iLQR','location','southeast')
 xlabel('Velocity (m/s)','fontsize',14)
 ylabel('Reference Control','fontsize',14)
 set(gca, 'XDir','reverse')
 
-%     saveas(gcf, ['C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Convergence\',fields{j},'.png']) %laptop
-saveas(gcf, 'E:\Documents\EDL\Documents\Dissertation\Images\Convergence\ControlProfiles.png') %pc
+    saveas(gcf, ['C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Convergence\ControlProfiles.png']) %laptop
+% saveas(gcf, 'E:\Documents\EDL\Documents\Dissertation\Images\Convergence\ControlProfiles.png') %pc
 
 %%
 fs = 14;
@@ -93,7 +93,7 @@ set(gca, 'XDir','reverse')
 saveas(gcf, 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\CoeffNominal.png')
 
 h = linspace(0, 55e3, 10000);
-rho = MarsAtmosphericDensity(h);
+[rho,vs] = MarsAtmosphericDensity(h);
 
 % subplot(1,2,2)
 figure
@@ -103,6 +103,12 @@ xlabel('Altitude (km)', 'fontsize', fs)
 grid on
 saveas(gcf, 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\DensityNominal.png')
 
+figure
+plot(h/1000, vs, 'linewidth', 2)
+ylabel('Speed of Sound (m/s)', 'fontsize',fs)
+xlabel('Altitude (km)', 'fontsize', fs)
+grid on
+saveas(gcf, 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\SpeedSound.png')
 %% Saturation Approx
 fs = 14;
 x = linspace(-0.5, 1.5, 5000);

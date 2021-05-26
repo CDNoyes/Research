@@ -6,12 +6,13 @@ else
 end
 
 savedir = 'E:\Documents\EDL\Documents\Dissertation\Images\Trajectory\';
+savedir = 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Trajectory\';
 
 lw = 2;
 fs = 14;
 ticksize = 10;
 figsize = [500,300];
-position = [100,100];
+position = [0,0];
 
 h = sol.h;
 v = sol.v;

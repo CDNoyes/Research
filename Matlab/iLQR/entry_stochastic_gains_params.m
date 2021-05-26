@@ -27,6 +27,7 @@ if nargin == 0
     input.ut_scale = 15;
     input.horizon = 250;
     input.n_controls = 1;
+    input.vf = 1100;
 %     input.running_plots = -1;
 end
 W = input.weights;
@@ -58,12 +59,14 @@ T       = input.horizon;
 ds      = dV/T;
 
 % Initial States
-x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
+% x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
 
+x0 = [input.x0; ones(n_params,1)]./[1;hscale;fpascale;1;1;1;1];
 if 1 %State + Param Uncertainty
     % Note that horizon must be set lower because of the increased state
     % dimension
-    [X0, weights] = UnscentedTransform(x0(2:end), 1*diag([2500/hscale, 0.25*pi/180/fpascale, 10000/rangescale, 5/100, 5/100, 7/100]).^2, input.ut_scale);
+    Px0 = diag(input.P0)./([hscale; fpascale; rangescale].^2);
+    [X0, weights] = UnscentedTransform(x0(2:end), 1*diag([Px0', [5/100, 5/100, 7/100].^2]), input.ut_scale);
     n_samples = length(weights);
     X0 = [zeros(n_samples,1), X0'];
     X0_vector = X0(n_samples:end)';
@@ -186,53 +189,54 @@ sol.BC = m/(S*cd);
 print_stats(x(:,end));
 
 if input.terminal_plots
+    SolutionPlots(sol);
     % Plots
-    lw = 2;
-    
-    figure
-    x2 = [v', fliplr(v')];
-    inBetween = [(sm-3*sv.^0.5)/1000, fliplr((sm+3*sv.^0.5)/1000)];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, s'/1000, 'k--','linewidth', 1)
-    plot(v, sm/1000, 'm', 'linewidth', lw)
-    
-    xlabel('Velocity, m/s')
-    ylabel('Downrange, km')
-    grid on
-    
-    figure
-    x2 = [v', fliplr(v')];
-    inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, h'/1000, 'k--','linewidth', 1)
-    plot(v, hm/1000, 'm', 'linewidth', lw)
-    
-    xlabel('Velocity m/s')
-    ylabel('Altitude km')
-    grid on
-    
-    figure
-    inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
-    fill(x2, inBetween, 'c');
-    hold all
-    plot(v, D', 'k--','linewidth', 1)
-    plot(v, Dm, 'm', 'linewidth', lw)
-    xlabel('Velocity, m/s')
-    ylabel('Drag, m/s^2')
-    grid on
-    
-    figure
-    plot(v(1:end-2), u(1,1:end-1), 'k', 'linewidth', lw)
-    hold all
-    if n_controls > 1
-        plot(v(1:end-2), u(2:end,1:end-1), 'linewidth', 1)
-    end
-    xlabel('Velocity, m/s')
-    ylabel('Controls')
-    legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
-    grid on
+%     lw = 2;
+%     
+%     figure
+%     x2 = [v', fliplr(v')];
+%     inBetween = [(sm-3*sv.^0.5)/1000, fliplr((sm+3*sv.^0.5)/1000)];
+%     fill(x2, inBetween, 'c');
+%     hold all
+%     plot(v, s'/1000, 'k--','linewidth', 1)
+%     plot(v, sm/1000, 'm', 'linewidth', lw)
+%     
+%     xlabel('Velocity, m/s')
+%     ylabel('Downrange, km')
+%     grid on
+%     
+%     figure
+%     x2 = [v', fliplr(v')];
+%     inBetween = [(hm-3*hv.^0.5)/1000, fliplr((hm+3*hv.^0.5)/1000)];
+%     fill(x2, inBetween, 'c');
+%     hold all
+%     plot(v, h'/1000, 'k--','linewidth', 1)
+%     plot(v, hm/1000, 'm', 'linewidth', lw)
+%     
+%     xlabel('Velocity m/s')
+%     ylabel('Altitude km')
+%     grid on
+%     
+%     figure
+%     inBetween = [(Dm-3*Dv.^0.5), fliplr((Dm+3*Dv.^0.5))];
+%     fill(x2, inBetween, 'c');
+%     hold all
+%     plot(v, D', 'k--','linewidth', 1)
+%     plot(v, Dm, 'm', 'linewidth', lw)
+%     xlabel('Velocity, m/s')
+%     ylabel('Drag, m/s^2')
+%     grid on
+%     
+%     figure
+%     plot(v(1:end-2), u(1,1:end-1), 'k', 'linewidth', lw)
+%     hold all
+%     if n_controls > 1
+%         plot(v(1:end-2), u(2:end,1:end-1), 'linewidth', 1)
+%     end
+%     xlabel('Velocity, m/s')
+%     ylabel('Controls')
+%     legend('Open Loop','K_D','K_s',['K_f / ',num2str(kf_scale)])
+%     grid on
 end
 
 function [h,v,fpa,s,g,L,D] = entry_accels(x)
