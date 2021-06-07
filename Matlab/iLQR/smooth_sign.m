@@ -6,5 +6,6 @@ function y = smooth_sign(x, scale)
 % y(x<0) = exp(scale*x(x<0)) - 1;
 
 y = tanh(x*scale);
+% y = x./sqrt(x.^2 + scale);
 end
 

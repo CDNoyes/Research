@@ -44,7 +44,6 @@ T       = input.horizon;
 ds      = dV/T;
 
 % Initial States
-% x0      = [0, 39.4497e3/hscale, (-10.604*pi/180)/fpascale, 0, ones(1, n_params)]';   % nominal initial state
 x0 = [input.x0; ones(n_params,1)]./[1;hscale;fpascale;1;1;1;1];
 
 weight_vector = [];
@@ -206,7 +205,8 @@ du = K(1)*eD.*mult + K(2)*es + K(3)*ef*200.*mult2; % [0.0725, -0.025, -4]
 
 LoD = L./D;
 LoDr = get_stats(LoD);
-u_cl = smooth_sat(LoDr./LoD.*U(1,:) + du); % cosh
+% u_cl = smooth_sat(LoDr./LoD.*U(1,:) + du); % cosh
+u_cl = smooth_sat( (LoDr.*U(1,:) + du)./LoD); % cosh
 
 % Derivs
 sdot = v.*cos(fpa);

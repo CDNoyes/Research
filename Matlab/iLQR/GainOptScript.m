@@ -1,3 +1,28 @@
+%% Generate a single gain function opt to show bad results!
+inp = DDPInput([1,1,0.2]);
+inp.ddp = true;
+inp.ut_scale = 15;
+inp.n_controls = 4;
+% inp.guess = sol.u;
+sol = entry_stochastic_gains_params(inp);
+
+save('MSLGainOptGoneWrongLowGain.mat', 'sol')
+
+%% What happens if I use large weights? Or increased control cost near end
+inp = DDPInput([3,3,3]);
+inp.ddp = true;
+inp.ut_scale = 9;
+sol = entry_stochastic_gains_params(inp);
+save('HighControlWeight.mat','sol')
+sols{4} = sol;
+inp.guess = sol.u;
+for i = 0:2
+    inp.weights(1) = i;
+    sols{i+1} = entry_stochastic_gains_params(inp);
+
+end
+save('HighControlWeights.mat','sols')
+%%
 inp = DDPInput([1,1,0.2]);
 inp.horizon = 250;
 % inp.guess = ones(1,inp.horizon)*0.8;
@@ -36,8 +61,10 @@ inp.ut_scale = [0, 5, 10];
 inp.ut_scale = 15;
 inp.horizon = 250;
 inp.gains = [0,0,0];
-inp.terminal_plots = false;
+inp.terminal_plots = true;
 sol = FixedGainOpt(inp, 0);
+
+% SolutionPlots(sol)
 
 % SolutionPlots(sol,'HeavyOpenLoop')
 
@@ -61,7 +88,7 @@ sol = FixedGainOpt(inp);
 
 % save('UTExample_OpenLoop', 'sol')
 %% Gather convergence data for three solutions, param unc only
-inp = DDPInput([1,1,0.75]);
+inp = DDPInput([1,1,0.2]);
 inp.ddp = true;
 inp.full_hessian = true;
 inp.ut_scale = 15;
@@ -76,26 +103,27 @@ inp.max_iterations = 250;
 sol_lqr = entry_stochastic_gains_params(inp);
 
 sols = {sol_ddp, sol_partial, sol_lqr};
-save('ConvergenceExampleSmoother', 'sols');
+% save('ConvergenceExample', 'sols');
 
 %% Convergence from a different guess?
-inp = DDPInput([1,1,0.75]);
+inp = DDPInput([1,1,0.2]);
 inp.ddp = true;
-inp.full_hessian = true;
 inp.ut_scale = 15;
-inp.guess = 0.5 + zeros(1,250);
-inp.horizon = 250;
-
+inp.horizon = 1000;
 inp.full_hessian = false;
+
+inp.guess = 0.5 + zeros(1,inp.horizon);
 sol_half = entry_stochastic_gains_params(inp);
 
-inp.guess = ones(1,250);
+inp.guess = ones(1,inp.horizon);
 sol_full = entry_stochastic_gains_params(inp);
 
-inp.guess = linspace(1,0,250);
+inp.guess = linspace(1,0,inp.horizon);
 sol_rampdown = entry_stochastic_gains_params(inp);
 sols = {sol_half, sol_full, sol_rampdown};
-save('ConvergenceGuessExample', 'sols');
+% save('ConvergenceGuessExample', 'sols');
+
+% Make table of final cost and total iterations
 %%
 inp = DDPInput([1,1,0.2]);
 
@@ -119,7 +147,7 @@ save('DetailedExample', 'sols')
 
 %% Load a file and it creates a new one with _optimized
 % fname = 'margin_comparison_0p24';
-fname = 'msl_weight_sweep';
+fname = 'msl_weight_sweep_high_control';
 fname_new = [fname,'_optimized'];
 load(fname);
 inp = DDPInput([0,0,0.2]);
@@ -129,7 +157,7 @@ for i = 1:length(sols)
     inp.terminal_plots = false;
     inp.running_plots = false;
     inp.horizon = 250;
-    inp.ut_scale = [0,5,10];
+    inp.ut_scale = [3,9,15];
     inp.weights = sols{i}.weights;
     inp.guess = sols{i}.u;
     sols{i} = FixedGainOpt(inp);
@@ -182,52 +210,3 @@ ylabel('Statistics (km)', 'fontsize', 14)
 legend('Mean Altitude','Mean Range - 300 km','STD Altitude','STD Range','location','best')
 grid on
 saveas(gcf, 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\AlphaSensitivity.png')
-%% Some solutions
-% alpha = 5
-% Kopt =
-%
-%     0.0582   -0.0215   -0.0226*200
-%
-% hf = 7.2347 +/- 3*0.80172 km (3s low = 4.8296)
-% sf = 327.7621 +/- 3*0.51265 km
-%
-%
-% alpha = 10
-% Kopt =
-%
-%     0.0634   -0.0227   -0.0149*200
-%
-% hf = 7.2718 +/- 3*0.83534 km (3s low = 4.7657)
-% sf = 327.2111 +/- 3*0.58646 km
-%
-% alpha = 15
-% Kopt =
-%
-%     0.0703   -0.0244   -0.0091*200
-%
-% hf = 7.2849 +/- 3*0.88727 km (3s low = 4.6231)
-% sf = 326.8169 +/- 3*0.7663 km
-%
-% alpha = [5, 15]
-% Kopt =
-%
-%     0.0708   -0.0251   -0.0186*200
-%
-% hf = 7.2448 +/- 3*0.84436 km (3s low = 4.7117)
-% sf = 327.776 +/- 3*0.86039 km
-%
-% alpha = [5, 10, 15]
-% Kopt =
-%
-%     0.0684   -0.0244   -0.0176*200
-%
-% hf = 7.253 +/- 3*0.84166 km (3s low = 4.728)
-% sf = 327.5989 +/- 3*0.79188 km
-%
-% alpha = [5,10,15] with initial guess K = 0
-% Kopt =
-%
-%     0.0684   -0.0244    -3.5220
-%
-% hf = 7.253 +/- 3*0.84166 km (3s low = 4.728)
-% sf = 327.5989 +/- 3*0.79188 km

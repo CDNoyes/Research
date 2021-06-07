@@ -35,7 +35,7 @@ input.lod = 0.24; % Nominal LoD at mach=24, scales the MSL profile
 input.terminal_plots = true;
 input.running_plots = 1; % set to -1 to include deriv plots
 input.max_iterations = 100;
-input.horizon = 1000;
+input.horizon = 250;
 input.qn = false; % default for now 
 input.parallel = true;
 input.guess = [];

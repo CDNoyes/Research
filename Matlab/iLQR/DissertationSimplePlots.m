@@ -1,3 +1,7 @@
+%% Optimized Gains Plots
+
+
+
 %% Convergence Example
 close all; clear; clc;
 
@@ -150,3 +154,21 @@ legend('M=1','M=3','M=20','Sat', 'location','northwest')
 xlabel('x', 'fontsize', fs)
 ylabel('Sat_{[0,1]}(x)', 'fontsize', fs)
 % saveas(gcf, 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\SmoothSatDeriv.png')
+
+%% MSL Control Param
+fs = 16;
+
+V = [5400, 3000, 1100,1100, 460];
+bank = [75, 45, 45, 15, 15];
+u = cosd(bank);
+u = bank;
+
+figure
+% subplot(1,2,1)
+plot(V, u, 'linewidth',2)
+xlabel('Velocity (m/s)', 'fontsize',fs)
+ylabel('Reference Bank Angle (deg) ', 'fontsize',fs)
+grid on
+set(gca, 'XDir','reverse')
+axis([460, 5505, 0, 90])
+saveas(gcf, 'E:\Documents\EDL\Documents\Dissertation\Images\MSLControl.png')

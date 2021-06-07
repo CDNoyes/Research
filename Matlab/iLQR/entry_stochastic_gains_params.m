@@ -3,7 +3,7 @@ function sol = entry_stochastic_gains_params(input)
 % optimization
 
 % How to configure between heavy vehicle and MSL vehicle:
-% Set the appropriate gains in DDPInput
+% Set the appropriate gains and state in DDPInput
 % Set the flag in aero_const to set mass, area, BC, etc
 % Set the scale value in LoDFun. 
 
@@ -27,7 +27,7 @@ if nargin == 0
     input.ut_scale = 15;
     input.horizon = 250;
     input.n_controls = 1;
-    input.vf = 1100;
+%     input.vf = 1100;
 %     input.running_plots = -1;
 end
 W = input.weights;
@@ -103,21 +103,27 @@ if ~isempty(input.guess) && n_controls > 1
     if size(input.guess,1) == 2
         L = input.guess(2,:)';
         disp('Loaded overcontrol from guess')
+        K0 = [L*kd, L*ks, L*kf]';
+
+    elseif size(input.guess,1) == 4
+        K0 = input.guess(2:4,:);
     else
             L = ones(T,1);
+K0 = [L*kd, L*ks, L*kf]';
 
     end
 else
     L = ones(T,1);
+    K0 = [L*kd, L*ks, L*kf]';
+
 end
-K0 = [L*kd, L*ks, L*kf]';
 
 % L = linspace(1, 2, T)';
 % K0 = 0*K0;
 
 if n_controls == 4 % reference + gain joint optimization
     disp('   Joint opt of reference control and gains')
-    Op.lims  = [input.bounds; [0,1]; [-1,0];[-10, 0]/kf_scale]; % don't allow 'bad' sign gains
+    Op.lims  = [input.bounds; [0,0.1]; [-0.1,0];[-0.1, 0]/kf_scale]; % don't allow 'bad' sign gains
     U0 = [u0;K0];
 elseif n_controls == 3 % optimize gains for fixed reference control
     disp('   Opt of gains for fixed reference control')
@@ -377,9 +383,9 @@ vh_dot = 0.5*vh_dot./((hvar + 0.0001).^0.5);
 
 lx = hprime + ws*vs_dot*ds + wh*vh_dot*ds;
 
-% control cost
-lu    = wu*(u(1,:)-0.5).^2 * ds.* v/2500; % this term is for smoothness
-% lu    = wu*(sum(u(2:end,:).^2,1)+ (u(1,:)-0.5).^2) * ds.* v/2500; % this term is for smoothness
+% control cost, this term is for smoothness
+% lu    = wu*(u(1,:)-0.5).^2 * ds.* v/2500; % decreasing, used in most tests
+lu    = wu*(u(1,:)-0.5).^2 * ds; % constant
 
 % total cost
 c     = (lu + lx)/cost_scale;

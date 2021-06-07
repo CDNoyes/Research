@@ -6,7 +6,7 @@ else
 end
 
 savedir = 'E:\Documents\EDL\Documents\Dissertation\Images\Trajectory\';
-savedir = 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Trajectory\';
+% savedir = 'C:\Users\Aero\Documents\EDL\Documents\Dissertation\Images\Trajectory\';
 
 lw = 2;
 fs = 14;
@@ -29,7 +29,7 @@ s = sol.s;
 sm = sol.mean(3,:);
 sv = sol.var(3,:);
 
-
+if 0
 f=figure;
 set(f, 'Position',[position,figsize]);
 
@@ -125,6 +125,7 @@ if do_save
     saveas(gcf, [savedir,save_prefix,'Control.png'])
 end
 
+end
 %% Four Grid
 gridsize = figsize*2.5;
 f=figure;
